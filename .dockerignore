@@ -1,0 +1,24 @@
+# Binary files
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+obj/
+
+# Local databases
+data/
+*.db
+*.duckdb
+
+# Git
+.git
+.gitignore
+
+# Go
+vendor/
+
+# OS files
+.DS_Store
+Thumbs.db
