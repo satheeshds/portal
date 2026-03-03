@@ -35,10 +35,10 @@ func getPayoutByID(id int) (models.Payout, error) {
 
 // ListPayouts lists all payouts
 // @Summary      List payouts
-// @Description  Get a list of all platform payouts (Swiggy, Zomato).
+// @Description  Get a list of all platform payouts (Swiggy, Zomato, Swiggy-Dineout).
 // @Tags         payouts
 // @Produce      json
-// @Param        platform     query     string  false  "Filter by platform (Swiggy, Zomato)"
+// @Param        platform     query     string  false  "Filter by platform (Swiggy, Zomato, Swiggy-Dineout)"
 // @Param        outlet_name  query     string  false  "Filter by outlet name"
 // @Param        from         query     string  false  "Filter by settlement date from (YYYY-MM-DD)"
 // @Param        to           query     string  false  "Filter by settlement date to (YYYY-MM-DD)"

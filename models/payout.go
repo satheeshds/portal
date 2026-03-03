@@ -49,9 +49,9 @@ func (p *PayoutInput) Validate() string {
 		return "outlet_name is required"
 	}
 	switch strings.ToLower(p.Platform) {
-	case "swiggy", "zomato":
+	case "swiggy", "zomato", "swiggy-dineout":
 	default:
-		return "platform must be swiggy or zomato"
+		return "platform must be swiggy or zomato or swiggy-dineout"
 	}
 	return ""
 }
