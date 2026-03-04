@@ -234,7 +234,6 @@ func UpdatePayout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	input.Platform = strings.ToLower(input.Platform)
 	res, err := DB.Exec(`UPDATE payouts SET outlet_name = ?, platform = ?, period_start = ?, period_end = ?,
 		settlement_date = ?, total_orders = ?, gross_sales_amt = ?, restaurant_discount_amt = ?,
 		platform_commission_amt = ?, taxes_tcs_tds_amt = ?, marketing_ads_amt = ?, final_payout_amt = ?,

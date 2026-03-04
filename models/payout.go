@@ -48,7 +48,11 @@ func (p *PayoutInput) Validate() string {
 	if p.OutletName == "" {
 		return "outlet_name is required"
 	}
-	switch strings.ToLower(p.Platform) {
+
+	// Normalize to lowercase
+	p.Platform = strings.ToLower(p.Platform)
+
+	switch p.Platform {
 	case "swiggy", "zomato", "swiggy-dineout":
 	default:
 		return "platform must be swiggy or zomato or swiggy-dineout"
