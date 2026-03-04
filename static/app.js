@@ -11,6 +11,16 @@ async function api(path, options = {}) {
     return json.data;
 }
 
+// ===== HTML Escape Helper =====
+function esc(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // ===== Money Helpers =====
 function formatMoney(paise) {
     return '₹' + (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1063,11 +1073,11 @@ async function renderRecurringPayments(params) {
         <div class="section-header">
             <h1>Recurring Payments</h1>
             <div style="display:flex;gap:0.5rem">
-                <select class="form-control" onchange="navigate('recurring-payments', {status:this.value, type:'${type}'})">
+                <select id="rp-status-filter" class="form-control">
                     <option value="">— All Statuses —</option>
                     ${['active', 'paused', 'cancelled', 'completed'].map(s => `<option value="${s}" ${status === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`).join('')}
                 </select>
-                <select class="form-control" onchange="navigate('recurring-payments', {status:'${status}', type:this.value})">
+                <select id="rp-type-filter" class="form-control">
                     <option value="">— All Types —</option>
                     <option value="income" ${type === 'income' ? 'selected' : ''}>Income</option>
                     <option value="expense" ${type === 'expense' ? 'selected' : ''}>Expense</option>
@@ -1082,16 +1092,16 @@ async function renderRecurringPayments(params) {
                     ${payments.length === 0 ? '<tr><td colspan="9" class="empty-state">No recurring payments found</td></tr>' :
             payments.map(p => `<tr>
                         <td>
-                            <strong>${p.name}</strong>
-                            ${p.description ? `<br><small style="color:var(--text-muted)">${p.description}</small>` : ''}
+                            <strong>${esc(p.name)}</strong>
+                            ${p.description ? `<br><small style="color:var(--text-muted)">${esc(p.description)}</small>` : ''}
                         </td>
-                        <td><span class="badge badge-${p.type}">${p.type}</span></td>
+                        <td><span class="badge badge-${esc(p.type)}">${esc(p.type)}</span></td>
                         <td class="money ${p.type === 'income' ? 'money-income' : 'money-expense'}">${formatMoney(p.amount)}</td>
-                        <td>${p.interval > 1 ? 'Every ' + p.interval + ' ' + p.frequency : p.frequency.charAt(0).toUpperCase() + p.frequency.slice(1)}</td>
-                        <td>${p.account_name || '—'}</td>
-                        <td>${p.contact_name || '—'}</td>
-                        <td>${p.next_due_date || '—'}</td>
-                        <td><span class="badge badge-${p.status}">${p.status}</span></td>
+                        <td>${p.interval > 1 ? 'Every ' + esc(p.interval) + ' ' + esc(p.frequency) : esc(p.frequency.charAt(0).toUpperCase() + p.frequency.slice(1))}</td>
+                        <td>${esc(p.account_name || '—')}</td>
+                        <td>${esc(p.contact_name || '—')}</td>
+                        <td>${esc(p.next_due_date || '—')}</td>
+                        <td><span class="badge badge-${esc(p.status)}">${esc(p.status)}</span></td>
                         <td class="actions-cell">
                             <button class="btn btn-ghost btn-sm" onclick="showRecurringPaymentForm(${p.id})">Edit</button>
                             <button class="btn btn-danger btn-sm" onclick="deleteRecurringPayment(${p.id})">Delete</button>
@@ -1101,6 +1111,13 @@ async function renderRecurringPayments(params) {
             </table>
         </div>
     `;
+
+    document.getElementById('rp-status-filter').addEventListener('change', function () {
+        navigate('recurring-payments', { status: this.value, type: document.getElementById('rp-type-filter').value });
+    });
+    document.getElementById('rp-type-filter').addEventListener('change', function () {
+        navigate('recurring-payments', { status: document.getElementById('rp-status-filter').value, type: this.value });
+    });
 }
 
 async function showRecurringPaymentForm(id) {
@@ -1117,7 +1134,7 @@ async function showRecurringPaymentForm(id) {
         <form onsubmit="saveRecurringPayment(event, ${id || 'null'})">
             <div class="form-group">
                 <label>Name</label>
-                <input class="form-control" name="name" value="${data.name}" required>
+                <input class="form-control" name="name" value="${esc(data.name)}" required>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -1129,7 +1146,7 @@ async function showRecurringPaymentForm(id) {
                 </div>
                 <div class="form-group">
                     <label>Amount (₹)</label>
-                    <input class="form-control" name="amount" type="number" step="0.01" value="${toRupees(data.amount)}" required>
+                    <input class="form-control" name="amount" type="number" step="0.01" value="${esc(toRupees(data.amount))}" required>
                 </div>
             </div>
             <div class="form-row">
@@ -1137,14 +1154,14 @@ async function showRecurringPaymentForm(id) {
                     <label>Account</label>
                     <select class="form-control" name="account_id" required>
                         <option value="">Select account</option>
-                        ${accounts.map(a => `<option value="${a.id}" ${data.account_id == a.id ? 'selected' : ''}>${a.name}</option>`).join('')}
+                        ${accounts.map(a => `<option value="${a.id}" ${data.account_id == a.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Contact (optional)</label>
                     <select class="form-control" name="contact_id">
                         <option value="">— None —</option>
-                        ${contacts.map(c => `<option value="${c.id}" ${data.contact_id == c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
+                        ${contacts.map(c => `<option value="${c.id}" ${data.contact_id == c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
                     </select>
                 </div>
             </div>
@@ -1157,23 +1174,23 @@ async function showRecurringPaymentForm(id) {
                 </div>
                 <div class="form-group">
                     <label>Interval (every N)</label>
-                    <input class="form-control" name="interval" type="number" min="1" value="${data.interval || 1}" required>
+                    <input class="form-control" name="interval" type="number" min="1" value="${esc(data.interval || 1)}" required>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Start Date</label>
-                    <input class="form-control" name="start_date" type="date" value="${data.start_date || ''}" required>
+                    <input class="form-control" name="start_date" type="date" value="${esc(data.start_date || '')}" required>
                 </div>
                 <div class="form-group">
                     <label>End Date (optional)</label>
-                    <input class="form-control" name="end_date" type="date" value="${data.end_date || ''}">
+                    <input class="form-control" name="end_date" type="date" value="${esc(data.end_date || '')}">
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Next Due Date (optional)</label>
-                    <input class="form-control" name="next_due_date" type="date" value="${data.next_due_date || ''}">
+                    <input class="form-control" name="next_due_date" type="date" value="${esc(data.next_due_date || '')}">
                 </div>
                 <div class="form-group">
                     <label>Status</label>
@@ -1184,11 +1201,11 @@ async function showRecurringPaymentForm(id) {
             </div>
             <div class="form-group">
                 <label>Description (optional)</label>
-                <input class="form-control" name="description" value="${data.description || ''}">
+                <input class="form-control" name="description" value="${esc(data.description || '')}">
             </div>
             <div class="form-group">
                 <label>Reference (optional)</label>
-                <input class="form-control" name="reference" value="${data.reference || ''}">
+                <input class="form-control" name="reference" value="${esc(data.reference || '')}">
             </div>
             <div class="form-actions">
                 <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
@@ -1220,7 +1237,7 @@ async function saveRecurringPayment(e, id) {
         if (id) await api(`/recurring-payments/${id}`, { method: 'PUT', body });
         else await api('/recurring-payments', { method: 'POST', body });
         closeModal();
-        renderRecurringPayments();
+        renderRecurringPayments(getSection().params);
     } catch (err) {
         alert('Error: ' + err.message);
     }
@@ -1229,7 +1246,7 @@ async function saveRecurringPayment(e, id) {
 async function deleteRecurringPayment(id) {
     if (!confirm('Delete this recurring payment?')) return;
     await api(`/recurring-payments/${id}`, { method: 'DELETE' });
-    renderRecurringPayments();
+    renderRecurringPayments(getSection().params);
 }
 
 // ===== Init =====
