@@ -9,7 +9,7 @@ import (
 type Payout struct {
 	ID                    int       `json:"id"`
 	OutletName            string    `json:"outlet_name"`
-	Platform              string    `json:"platform"` // Swiggy, Zomato
+	Platform              string    `json:"platform"` // swiggy, zomato, swiggy-dineout
 	PeriodStart           *string   `json:"period_start"`
 	PeriodEnd             *string   `json:"period_end"`
 	SettlementDate        *string   `json:"settlement_date"`
@@ -48,10 +48,14 @@ func (p *PayoutInput) Validate() string {
 	if p.OutletName == "" {
 		return "outlet_name is required"
 	}
-	switch strings.ToLower(p.Platform) {
-	case "swiggy", "zomato":
+
+	// Normalize to lowercase
+	p.Platform = strings.ToLower(p.Platform)
+
+	switch p.Platform {
+	case "swiggy", "zomato", "swiggy-dineout":
 	default:
-		return "platform must be swiggy or zomato"
+		return "platform must be one of: swiggy, zomato, swiggy-dineout"
 	}
 	return ""
 }

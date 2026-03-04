@@ -35,10 +35,10 @@ func getPayoutByID(id int) (models.Payout, error) {
 
 // ListPayouts lists all payouts
 // @Summary      List payouts
-// @Description  Get a list of all platform payouts (Swiggy, Zomato).
+// @Description  Get a list of all platform payouts (Swiggy, Zomato, Swiggy-Dineout).
 // @Tags         payouts
 // @Produce      json
-// @Param        platform     query     string  false  "Filter by platform (Swiggy, Zomato)"
+// @Param        platform     query     string  false  "Filter by platform (Swiggy, Zomato, Swiggy-Dineout)"
 // @Param        outlet_name  query     string  false  "Filter by outlet name"
 // @Param        from         query     string  false  "Filter by settlement date from (YYYY-MM-DD)"
 // @Param        to           query     string  false  "Filter by settlement date to (YYYY-MM-DD)"
@@ -234,7 +234,6 @@ func UpdatePayout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	input.Platform = strings.ToLower(input.Platform)
 	res, err := DB.Exec(`UPDATE payouts SET outlet_name = ?, platform = ?, period_start = ?, period_end = ?,
 		settlement_date = ?, total_orders = ?, gross_sales_amt = ?, restaurant_discount_amt = ?,
 		platform_commission_amt = ?, taxes_tcs_tds_amt = ?, marketing_ads_amt = ?, final_payout_amt = ?,

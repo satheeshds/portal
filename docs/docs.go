@@ -1512,6 +1512,409 @@ const docTemplate = `{
                 }
             }
         },
+        "/payouts": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Get a list of all platform payouts (Swiggy, Zomato, Swiggy-Dineout).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payouts"
+                ],
+                "summary": "List payouts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by platform (Swiggy, Zomato, Swiggy-Dineout)",
+                        "name": "platform",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by outlet name",
+                        "name": "outlet_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by settlement date from (YYYY-MM-DD)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by settlement date to (YYYY-MM-DD)",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handlers.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.Payout"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Create a new platform payout record.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payouts"
+                ],
+                "summary": "Create payout",
+                "parameters": [
+                    {
+                        "description": "Payout contents",
+                        "name": "payout",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.PayoutInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handlers.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.Payout"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handlers.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/payouts/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Get details of a specific platform payout.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payouts"
+                ],
+                "summary": "Get payout",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payout ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handlers.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.Payout"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handlers.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Update details of an existing platform payout record.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payouts"
+                ],
+                "summary": "Update payout",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payout ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated payout contents",
+                        "name": "payout",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.PayoutInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handlers.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.Payout"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handlers.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handlers.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Remove a platform payout record.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payouts"
+                ],
+                "summary": "Delete payout",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payout ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handlers.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handlers.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/payouts/{id}/links": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Get all payment transactions linked to a specific payout.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payouts"
+                ],
+                "summary": "Get payout links",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Payout ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handlers.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/handlers.PayoutLink"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/transactions": {
             "get": {
                 "security": [
@@ -2000,7 +2403,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice",
+                    "description": "bill, invoice or payout",
                     "type": "string"
                 },
                 "id": {
@@ -2036,7 +2439,43 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice",
+                    "description": "bill, invoice or payout",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "reference": {
+                    "type": "string"
+                },
+                "transaction_date": {
+                    "type": "string"
+                },
+                "transaction_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handlers.PayoutLink": {
+            "type": "object",
+            "properties": {
+                "account_name": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "document_id": {
+                    "type": "integer"
+                },
+                "document_type": {
+                    "description": "bill, invoice or payout",
                     "type": "string"
                 },
                 "id": {
@@ -2066,17 +2505,19 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "bills_payable": {
-                    "description": "sum of unpaid bill amounts (paise)",
                     "type": "integer"
                 },
                 "invoices_receivable": {
-                    "description": "sum of unpaid invoice amounts (paise)",
                     "type": "integer"
                 },
                 "overdue_bills": {
                     "type": "integer"
                 },
                 "overdue_invoices": {
+                    "type": "integer"
+                },
+                "payouts_received": {
+                    "description": "sum of final_payout_amt",
                     "type": "integer"
                 },
                 "recent_transactions": {
@@ -2096,6 +2537,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "total_invoices": {
+                    "type": "integer"
+                },
+                "total_payouts": {
                     "type": "integer"
                 },
                 "total_transactions": {
@@ -2357,6 +2801,108 @@ const docTemplate = `{
                 }
             }
         },
+        "models.Payout": {
+            "type": "object",
+            "properties": {
+                "allocated": {
+                    "description": "Computed fields",
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "final_payout_amt": {
+                    "type": "integer"
+                },
+                "gross_sales_amt": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "marketing_ads_amt": {
+                    "type": "integer"
+                },
+                "outlet_name": {
+                    "type": "string"
+                },
+                "period_end": {
+                    "type": "string"
+                },
+                "period_start": {
+                    "type": "string"
+                },
+                "platform": {
+                    "description": "swiggy, zomato, swiggy-dineout",
+                    "type": "string"
+                },
+                "platform_commission_amt": {
+                    "type": "integer"
+                },
+                "restaurant_discount_amt": {
+                    "type": "integer"
+                },
+                "settlement_date": {
+                    "type": "string"
+                },
+                "taxes_tcs_tds_amt": {
+                    "type": "integer"
+                },
+                "total_orders": {
+                    "type": "integer"
+                },
+                "unallocated": {
+                    "type": "integer"
+                },
+                "utr_number": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.PayoutInput": {
+            "type": "object",
+            "properties": {
+                "final_payout_amt": {
+                    "type": "integer"
+                },
+                "gross_sales_amt": {
+                    "type": "integer"
+                },
+                "marketing_ads_amt": {
+                    "type": "integer"
+                },
+                "outlet_name": {
+                    "type": "string"
+                },
+                "period_end": {
+                    "type": "string"
+                },
+                "period_start": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "platform_commission_amt": {
+                    "type": "integer"
+                },
+                "restaurant_discount_amt": {
+                    "type": "integer"
+                },
+                "settlement_date": {
+                    "type": "string"
+                },
+                "taxes_tcs_tds_amt": {
+                    "type": "integer"
+                },
+                "total_orders": {
+                    "type": "integer"
+                },
+                "utr_number": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Transaction": {
             "type": "object",
             "properties": {
@@ -2425,7 +2971,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice",
+                    "description": "bill, invoice or payout",
                     "type": "string"
                 },
                 "id": {

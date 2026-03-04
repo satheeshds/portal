@@ -13,7 +13,7 @@ definitions:
       document_id:
         type: integer
       document_type:
-        description: bill, invoice
+        description: bill, invoice or payout
         type: string
       id:
         type: integer
@@ -37,7 +37,31 @@ definitions:
       document_id:
         type: integer
       document_type:
-        description: bill, invoice
+        description: bill, invoice or payout
+        type: string
+      id:
+        type: integer
+      reference:
+        type: string
+      transaction_date:
+        type: string
+      transaction_id:
+        type: integer
+    type: object
+  handlers.PayoutLink:
+    properties:
+      account_name:
+        type: string
+      amount:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      document_id:
+        type: integer
+      document_type:
+        description: bill, invoice or payout
         type: string
       id:
         type: integer
@@ -57,14 +81,15 @@ definitions:
   handlers.dashboardData:
     properties:
       bills_payable:
-        description: sum of unpaid bill amounts (paise)
         type: integer
       invoices_receivable:
-        description: sum of unpaid invoice amounts (paise)
         type: integer
       overdue_bills:
         type: integer
       overdue_invoices:
+        type: integer
+      payouts_received:
+        description: sum of final_payout_amt
         type: integer
       recent_transactions:
         items:
@@ -78,6 +103,8 @@ definitions:
       total_contacts:
         type: integer
       total_invoices:
+        type: integer
+      total_payouts:
         type: integer
       total_transactions:
         type: integer
@@ -252,6 +279,74 @@ definitions:
       status:
         type: string
     type: object
+  models.Payout:
+    properties:
+      allocated:
+        description: Computed fields
+        type: integer
+      created_at:
+        type: string
+      final_payout_amt:
+        type: integer
+      gross_sales_amt:
+        type: integer
+      id:
+        type: integer
+      marketing_ads_amt:
+        type: integer
+      outlet_name:
+        type: string
+      period_end:
+        type: string
+      period_start:
+        type: string
+      platform:
+        description: swiggy, zomato, swiggy-dineout
+        type: string
+      platform_commission_amt:
+        type: integer
+      restaurant_discount_amt:
+        type: integer
+      settlement_date:
+        type: string
+      taxes_tcs_tds_amt:
+        type: integer
+      total_orders:
+        type: integer
+      unallocated:
+        type: integer
+      utr_number:
+        type: string
+    type: object
+  models.PayoutInput:
+    properties:
+      final_payout_amt:
+        type: integer
+      gross_sales_amt:
+        type: integer
+      marketing_ads_amt:
+        type: integer
+      outlet_name:
+        type: string
+      period_end:
+        type: string
+      period_start:
+        type: string
+      platform:
+        type: string
+      platform_commission_amt:
+        type: integer
+      restaurant_discount_amt:
+        type: integer
+      settlement_date:
+        type: string
+      taxes_tcs_tds_amt:
+        type: integer
+      total_orders:
+        type: integer
+      utr_number:
+        type: string
+    type: object
   models.Transaction:
     properties:
       account_id:
@@ -298,7 +393,7 @@ definitions:
       document_id:
         type: integer
       document_type:
-        description: bill, invoice
+        description: bill, invoice or payout
         type: string
       id:
         type: integer
@@ -1176,6 +1271,232 @@ paths:
       summary: Get invoice links
       tags:
       - invoices
+  /payouts:
+    get:
+      description: Get a list of all platform payouts (Swiggy, Zomato, Swiggy-Dineout).
+      parameters:
+      - description: Filter by platform (Swiggy, Zomato, Swiggy-Dineout)
+        in: query
+        name: platform
+        type: string
+      - description: Filter by outlet name
+        in: query
+        name: outlet_name
+        type: string
+      - description: Filter by settlement date from (YYYY-MM-DD)
+        in: query
+        name: from
+        type: string
+      - description: Filter by settlement date to (YYYY-MM-DD)
+        in: query
+        name: to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Payout'
+                  type: array
+              type: object
+      security:
+      - BasicAuth: []
+      summary: List payouts
+      tags:
+      - payouts
+    post:
+      consumes:
+      - application/json
+      description: Create a new platform payout record.
+      parameters:
+      - description: Payout contents
+        in: body
+        name: payout
+        required: true
+        schema:
+          $ref: '#/definitions/models.PayoutInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Payout'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.Response'
+            - properties:
+                error:
+                  type: string
+              type: object
+      security:
+      - BasicAuth: []
+      summary: Create payout
+      tags:
+      - payouts
+  /payouts/{id}:
+    delete:
+      description: Remove a platform payout record.
+      parameters:
+      - description: Payout ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.Response'
+            - properties:
+                error:
+                  type: string
+              type: object
+      security:
+      - BasicAuth: []
+      summary: Delete payout
+      tags:
+      - payouts
+    get:
+      description: Get details of a specific platform payout.
+      parameters:
+      - description: Payout ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Payout'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.Response'
+            - properties:
+                error:
+                  type: string
+              type: object
+      security:
+      - BasicAuth: []
+      summary: Get payout
+      tags:
+      - payouts
+    put:
+      consumes:
+      - application/json
+      description: Update details of an existing platform payout record.
+      parameters:
+      - description: Payout ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated payout contents
+        in: body
+        name: payout
+        required: true
+        schema:
+          $ref: '#/definitions/models.PayoutInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Payout'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.Response'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.Response'
+            - properties:
+                error:
+                  type: string
+              type: object
+      security:
+      - BasicAuth: []
+      summary: Update payout
+      tags:
+      - payouts
+  /payouts/{id}/links:
+    get:
+      description: Get all payment transactions linked to a specific payout.
+      parameters:
+      - description: Payout ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/handlers.PayoutLink'
+                  type: array
+              type: object
+      security:
+      - BasicAuth: []
+      summary: Get payout links
+      tags:
+      - payouts
   /transactions:
     get:
       description: Get a list of all bank transactions (income, expense, transfer)

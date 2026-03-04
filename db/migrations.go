@@ -107,11 +107,11 @@ var migrations = []string{
 		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 	)`,
 
-	// Payouts from Swiggy/Zomato
+	// Payouts from Swiggy/Zomato/Swiggy-Dineout
 	`CREATE TABLE IF NOT EXISTS payouts (
 		id INTEGER PRIMARY KEY DEFAULT nextval('payouts_id_seq'),
 		outlet_name TEXT NOT NULL,
-		platform TEXT NOT NULL CHECK(platform IN ('swiggy', 'zomato')),
+		platform TEXT NOT NULL,
 		period_start DATE,
 		period_end DATE,
 		settlement_date TEXT,
