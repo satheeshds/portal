@@ -30,6 +30,7 @@ var migrations = []string{
 	"CREATE SEQUENCE IF NOT EXISTS transactions_id_seq",
 	"CREATE SEQUENCE IF NOT EXISTS transaction_documents_id_seq",
 	"CREATE SEQUENCE IF NOT EXISTS payouts_id_seq",
+	"CREATE SEQUENCE IF NOT EXISTS recurring_payments_id_seq",
 
 	// Accounts: bank, cash, credit card
 	`CREATE TABLE IF NOT EXISTS accounts (
@@ -137,4 +138,28 @@ var migrations = []string{
 	`CREATE INDEX IF NOT EXISTS idx_transaction_documents_doc ON transaction_documents(document_type, document_id)`,
 	`CREATE INDEX IF NOT EXISTS idx_payouts_platform ON payouts(platform)`,
 	`CREATE INDEX IF NOT EXISTS idx_payouts_outlet ON payouts(outlet_name)`,
+
+	// Recurring payments: scheduled income or expense
+	`CREATE TABLE IF NOT EXISTS recurring_payments (
+		id INTEGER PRIMARY KEY DEFAULT nextval('recurring_payments_id_seq'),
+		name TEXT NOT NULL,
+		type TEXT NOT NULL CHECK(type IN ('income', 'expense')),
+		amount INTEGER NOT NULL CHECK(amount > 0),
+		account_id INTEGER NOT NULL,
+		contact_id INTEGER,
+		frequency TEXT NOT NULL CHECK(frequency IN ('daily', 'weekly', 'monthly', 'quarterly', 'yearly')),
+		interval INTEGER NOT NULL DEFAULT 1 CHECK(interval > 0),
+		start_date DATE NOT NULL,
+		end_date DATE,
+		next_due_date DATE,
+		last_generated_date DATE,
+		status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'paused', 'cancelled', 'completed')),
+		description TEXT,
+		reference TEXT,
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS idx_recurring_payments_account ON recurring_payments(account_id)`,
+	`CREATE INDEX IF NOT EXISTS idx_recurring_payments_status ON recurring_payments(status)`,
+	`CREATE INDEX IF NOT EXISTS idx_recurring_payments_next_due ON recurring_payments(next_due_date)`,
 }

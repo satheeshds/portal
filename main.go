@@ -112,6 +112,13 @@ func main() {
 		r.Delete("/payouts/{id}", handlers.DeletePayout)
 		r.Get("/payouts/{id}/links", handlers.GetPayoutLinks)
 
+		// Recurring Payments
+		r.Get("/recurring-payments", handlers.ListRecurringPayments)
+		r.Post("/recurring-payments", handlers.CreateRecurringPayment)
+		r.Get("/recurring-payments/{id}", handlers.GetRecurringPayment)
+		r.Put("/recurring-payments/{id}", handlers.UpdateRecurringPayment)
+		r.Delete("/recurring-payments/{id}", handlers.DeleteRecurringPayment)
+
 		// Dashboard
 		r.Get("/dashboard", handlers.GetDashboard)
 	})
