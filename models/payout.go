@@ -9,7 +9,7 @@ import (
 type Payout struct {
 	ID                    int       `json:"id"`
 	OutletName            string    `json:"outlet_name"`
-	Platform              string    `json:"platform"` // Swiggy, Zomato
+	Platform              string    `json:"platform"` // swiggy, zomato, swiggy-dineout
 	PeriodStart           *string   `json:"period_start"`
 	PeriodEnd             *string   `json:"period_end"`
 	SettlementDate        *string   `json:"settlement_date"`

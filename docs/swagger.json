@@ -2397,7 +2397,7 @@
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice",
+                    "description": "bill, invoice, payout",
                     "type": "string"
                 },
                 "id": {
@@ -2433,7 +2433,7 @@
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice",
+                    "description": "bill, invoice, payout",
                     "type": "string"
                 },
                 "id": {
@@ -2469,7 +2469,7 @@
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice",
+                    "description": "bill, invoice, payout",
                     "type": "string"
                 },
                 "id": {
@@ -2827,7 +2827,7 @@
                     "type": "string"
                 },
                 "platform": {
-                    "description": "Swiggy, Zomato",
+                    "description": "swiggy, zomato, swiggy-dineout",
                     "type": "string"
                 },
                 "platform_commission_amt": {
@@ -2965,7 +2965,7 @@
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice",
+                    "description": "bill, invoice, payout",
                     "type": "string"
                 },
                 "id": {

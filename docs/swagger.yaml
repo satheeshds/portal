@@ -13,7 +13,7 @@ definitions:
       document_id:
         type: integer
       document_type:
-        description: bill, invoice
+        description: bill, invoice, payout
         type: string
       id:
         type: integer
@@ -37,7 +37,7 @@ definitions:
       document_id:
         type: integer
       document_type:
-        description: bill, invoice
+        description: bill, invoice, payout
         type: string
       id:
         type: integer
@@ -61,7 +61,7 @@ definitions:
       document_id:
         type: integer
       document_type:
-        description: bill, invoice
+        description: bill, invoice, payout
         type: string
       id:
         type: integer
@@ -301,7 +301,7 @@ definitions:
       period_start:
         type: string
       platform:
-        description: Swiggy, Zomato
+        description: swiggy, zomato, swiggy-dineout
         type: string
       platform_commission_amt:
         type: integer
@@ -393,7 +393,7 @@ definitions:
       document_id:
         type: integer
       document_type:
-        description: bill, invoice
+        description: bill, invoice, payout
         type: string
       id:
         type: integer

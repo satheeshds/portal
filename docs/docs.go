@@ -2403,7 +2403,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice",
+                    "description": "bill, invoice, payout",
                     "type": "string"
                 },
                 "id": {
@@ -2439,7 +2439,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice",
+                    "description": "bill, invoice, payout",
                     "type": "string"
                 },
                 "id": {
@@ -2475,7 +2475,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice",
+                    "description": "bill, invoice, payout",
                     "type": "string"
                 },
                 "id": {
@@ -2833,7 +2833,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "platform": {
-                    "description": "Swiggy, Zomato",
+                    "description": "swiggy, zomato, swiggy-dineout",
                     "type": "string"
                 },
                 "platform_commission_amt": {
@@ -2971,7 +2971,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice",
+                    "description": "bill, invoice, payout",
                     "type": "string"
                 },
                 "id": {
