@@ -1154,30 +1154,14 @@ async function showRecurringPaymentForm(id) {
                     <label>Account</label>
                     <select class="form-control" name="account_id" required>
                         <option value="">Select account</option>
-                        ${accounts.map(a => {
-                            const safeName = String(a.name)
-                                .replace(/&/g, '&amp;')
-                                .replace(/</g, '&lt;')
-                                .replace(/>/g, '&gt;')
-                                .replace(/"/g, '&quot;')
-                                .replace(/'/g, '&#39;');
-                            return `<option value="${a.id}" ${data.account_id == a.id ? 'selected' : ''}>${safeName}</option>`;
-                        }).join('')}
+                        ${accounts.map(a => `<option value="${a.id}" ${data.account_id == a.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Contact (optional)</label>
                     <select class="form-control" name="contact_id">
                         <option value="">— None —</option>
-                        ${contacts.map(c => {
-                            const safeName = String(c.name)
-                                .replace(/&/g, '&amp;')
-                                .replace(/</g, '&lt;')
-                                .replace(/>/g, '&gt;')
-                                .replace(/"/g, '&quot;')
-                                .replace(/'/g, '&#39;');
-                            return `<option value="${c.id}" ${data.contact_id == c.id ? 'selected' : ''}>${safeName}</option>`;
-                        }).join('')}
+                        ${contacts.map(c => `<option value="${c.id}" ${data.contact_id == c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
                     </select>
                 </div>
             </div>
