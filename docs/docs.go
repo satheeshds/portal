@@ -2403,7 +2403,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice, payout",
+                    "description": "bill, invoice or payout",
                     "type": "string"
                 },
                 "id": {
@@ -2439,7 +2439,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice, payout",
+                    "description": "bill, invoice or payout",
                     "type": "string"
                 },
                 "id": {
@@ -2475,7 +2475,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice, payout",
+                    "description": "bill, invoice or payout",
                     "type": "string"
                 },
                 "id": {
@@ -2971,7 +2971,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice, payout",
+                    "description": "bill, invoice or payout",
                     "type": "string"
                 },
                 "id": {

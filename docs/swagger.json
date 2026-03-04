@@ -2397,7 +2397,7 @@
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice, payout",
+                    "description": "bill, invoice or payout",
                     "type": "string"
                 },
                 "id": {
@@ -2433,7 +2433,7 @@
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice, payout",
+                    "description": "bill, invoice or payout",
                     "type": "string"
                 },
                 "id": {
@@ -2469,7 +2469,7 @@
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice, payout",
+                    "description": "bill, invoice or payout",
                     "type": "string"
                 },
                 "id": {
@@ -2965,7 +2965,7 @@
                     "type": "integer"
                 },
                 "document_type": {
-                    "description": "bill, invoice, payout",
+                    "description": "bill, invoice or payout",
                     "type": "string"
                 },
                 "id": {

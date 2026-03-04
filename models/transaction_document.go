@@ -2,17 +2,17 @@ package models
 
 import "time"
 
-// TransactionDocument links a transaction to a bill, invoice, payout with an allocated amount.
+// TransactionDocument links a transaction to a bill, invoice or payout with an allocated amount.
 type TransactionDocument struct {
 	ID            int       `json:"id"`
 	TransactionID int       `json:"transaction_id"`
-	DocumentType  string    `json:"document_type"` // bill, invoice, payout
+	DocumentType  string    `json:"document_type"` // bill, invoice or payout
 	DocumentID    int       `json:"document_id"`
 	Amount        Money     `json:"amount"`
 	CreatedAt     time.Time `json:"created_at"`
 }
 
-// TransactionDocumentInput is used for linking transactions to bills/invoices/payouts.
+// TransactionDocumentInput is used for linking transactions to bills, invoices or payouts.
 type TransactionDocumentInput struct {
 	DocumentType string `json:"document_type"`
 	DocumentID   int    `json:"document_id"`
@@ -23,7 +23,7 @@ func (td *TransactionDocumentInput) Validate() string {
 	switch td.DocumentType {
 	case "bill", "invoice", "payout":
 	default:
-		return "document_type must be one of: bill, invoice, payout"
+		return "document_type must be one of: bill, invoice or payout"
 	}
 	if td.DocumentID <= 0 {
 		return "document_id is required"

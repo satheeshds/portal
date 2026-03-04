@@ -55,7 +55,7 @@ func (p *PayoutInput) Validate() string {
 	switch p.Platform {
 	case "swiggy", "zomato", "swiggy-dineout":
 	default:
-		return "platform must be swiggy or zomato or swiggy-dineout"
+		return "platform must be one of: swiggy, zomato, swiggy-dineout"
 	}
 	return ""
 }
