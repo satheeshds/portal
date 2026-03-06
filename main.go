@@ -104,6 +104,10 @@ func main() {
 		r.Post("/transactions/{id}/links", handlers.CreateTransactionLink)
 		r.Delete("/transactions/{id}/links/{linkId}", handlers.DeleteTransactionLink)
 
+		// Payment matching
+		r.Get("/transactions/{id}/match-suggestions", handlers.SuggestMatches)
+		r.Post("/transactions/{id}/auto-match", handlers.AutoMatch)
+
 		// Payouts
 		r.Get("/payouts", handlers.ListPayouts)
 		r.Post("/payouts", handlers.CreatePayout)
