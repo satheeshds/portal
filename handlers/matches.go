@@ -515,6 +515,269 @@ func suggestRecurringPayments(txnType string, amount models.Money, txnDate time.
 	return suggestions
 }
 
+// TransactionSuggestion represents a candidate bank transaction that could match a financial document.
+type TransactionSuggestion struct {
+	TransactionID   int          `json:"transaction_id"`
+	TransactionDate string       `json:"transaction_date"`
+	Description     string       `json:"description"`
+	Reference       string       `json:"reference"`
+	Amount          models.Money `json:"amount"`      // total transaction amount
+	Unallocated     models.Money `json:"unallocated"` // unallocated amount remaining
+	Confidence      float64      `json:"confidence"`
+	MatchReasons    []string     `json:"match_reasons"`
+	Linkable        bool         `json:"linkable"`
+}
+
+// getDocumentAllocated returns the total amount already allocated to a document via transaction_documents.
+func getDocumentAllocated(docType string, docID int) models.Money {
+	var allocated models.Money
+	DB.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM transaction_documents WHERE document_type = ? AND document_id = ?", docType, docID).Scan(&allocated)
+	return allocated
+}
+
+// SuggestTransactionsForBill returns ranked bank transaction suggestions for a specific bill.
+// @Summary      Suggest transactions for a bill
+// @Description  Returns a ranked list of unallocated bank transactions that could match a bill, scored by amount, date, and description similarity. Already-linked transactions are excluded.
+// @Tags         bills
+// @Produce      json
+// @Param        id   path      int  true  "Bill ID"
+// @Success      200  {object}  Response{data=[]TransactionSuggestion}
+// @Failure      404  {object}  Response{error=string}
+// @Router       /bills/{id}/match-suggestions [get]
+// @Security     BasicAuth
+func SuggestTransactionsForBill(w http.ResponseWriter, r *http.Request) {
+	billID, _ := strconv.Atoi(chi.URLParam(r, "id"))
+
+	var totalAmt models.Money
+	var billNum, notes string
+	var dueDate, issueDate *string
+	var contactName string
+	err := DB.QueryRow(`
+		SELECT b.amount, COALESCE(b.bill_number, ''), b.due_date, b.issue_date,
+			COALESCE(b.notes, ''), COALESCE(c.name, '')
+		FROM bills b
+		LEFT JOIN contacts c ON b.contact_id = c.id
+		WHERE b.id = ?`, billID).Scan(&totalAmt, &billNum, &dueDate, &issueDate, &notes, &contactName)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "bill not found")
+		return
+	}
+
+	unallocated := models.Money(int64(totalAmt) - int64(getDocumentAllocated("bill", billID)))
+	if unallocated <= 0 {
+		writeJSON(w, http.StatusOK, []TransactionSuggestion{})
+		return
+	}
+
+	docDate := derefDate(dueDate, issueDate)
+	docRef := billNum
+	docContext := contactName + " " + notes
+
+	suggestions := suggestTransactionsForDocument("expense", "bill", billID, unallocated, docDate, 30, docRef, docContext)
+	sort.Slice(suggestions, func(i, j int) bool {
+		return suggestions[i].Confidence > suggestions[j].Confidence
+	})
+	if suggestions == nil {
+		suggestions = []TransactionSuggestion{}
+	}
+	writeJSON(w, http.StatusOK, suggestions)
+}
+
+// SuggestTransactionsForInvoice returns ranked bank transaction suggestions for a specific invoice.
+// @Summary      Suggest transactions for an invoice
+// @Description  Returns a ranked list of unallocated bank transactions that could match an invoice, scored by amount, date, and description similarity. Already-linked transactions are excluded.
+// @Tags         invoices
+// @Produce      json
+// @Param        id   path      int  true  "Invoice ID"
+// @Success      200  {object}  Response{data=[]TransactionSuggestion}
+// @Failure      404  {object}  Response{error=string}
+// @Router       /invoices/{id}/match-suggestions [get]
+// @Security     BasicAuth
+func SuggestTransactionsForInvoice(w http.ResponseWriter, r *http.Request) {
+	invoiceID, _ := strconv.Atoi(chi.URLParam(r, "id"))
+
+	var totalAmt models.Money
+	var invoiceNum, notes string
+	var dueDate, issueDate *string
+	var contactName string
+	err := DB.QueryRow(`
+		SELECT i.amount, COALESCE(i.invoice_number, ''), i.due_date, i.issue_date,
+			COALESCE(i.notes, ''), COALESCE(c.name, '')
+		FROM invoices i
+		LEFT JOIN contacts c ON i.contact_id = c.id
+		WHERE i.id = ?`, invoiceID).Scan(&totalAmt, &invoiceNum, &dueDate, &issueDate, &notes, &contactName)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "invoice not found")
+		return
+	}
+
+	unallocated := models.Money(int64(totalAmt) - int64(getDocumentAllocated("invoice", invoiceID)))
+	if unallocated <= 0 {
+		writeJSON(w, http.StatusOK, []TransactionSuggestion{})
+		return
+	}
+
+	docDate := derefDate(dueDate, issueDate)
+	docRef := invoiceNum
+	docContext := contactName + " " + notes
+
+	suggestions := suggestTransactionsForDocument("income", "invoice", invoiceID, unallocated, docDate, 30, docRef, docContext)
+	sort.Slice(suggestions, func(i, j int) bool {
+		return suggestions[i].Confidence > suggestions[j].Confidence
+	})
+	if suggestions == nil {
+		suggestions = []TransactionSuggestion{}
+	}
+	writeJSON(w, http.StatusOK, suggestions)
+}
+
+// SuggestTransactionsForPayout returns ranked bank transaction suggestions for a specific payout.
+// @Summary      Suggest transactions for a payout
+// @Description  Returns a ranked list of unallocated bank transactions that could match a payout, scored by amount, date, and UTR/description similarity. Already-linked transactions are excluded.
+// @Tags         payouts
+// @Produce      json
+// @Param        id   path      int  true  "Payout ID"
+// @Success      200  {object}  Response{data=[]TransactionSuggestion}
+// @Failure      404  {object}  Response{error=string}
+// @Router       /payouts/{id}/match-suggestions [get]
+// @Security     BasicAuth
+func SuggestTransactionsForPayout(w http.ResponseWriter, r *http.Request) {
+	payoutID, _ := strconv.Atoi(chi.URLParam(r, "id"))
+
+	var totalAmt models.Money
+	var utrNumber, outletName string
+	var settlementDate *string
+	err := DB.QueryRow(`
+		SELECT p.final_payout_amt, COALESCE(p.utr_number, ''), p.settlement_date, COALESCE(p.outlet_name, '')
+		FROM payouts p
+		WHERE p.id = ?`, payoutID).Scan(&totalAmt, &utrNumber, &settlementDate, &outletName)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "payout not found")
+		return
+	}
+
+	unallocated := models.Money(int64(totalAmt) - int64(getDocumentAllocated("payout", payoutID)))
+	if unallocated <= 0 {
+		writeJSON(w, http.StatusOK, []TransactionSuggestion{})
+		return
+	}
+
+	docDate := ""
+	if settlementDate != nil {
+		docDate = *settlementDate
+	}
+
+	suggestions := suggestTransactionsForDocument("income", "payout", payoutID, unallocated, docDate, 7, utrNumber, outletName)
+	sort.Slice(suggestions, func(i, j int) bool {
+		return suggestions[i].Confidence > suggestions[j].Confidence
+	})
+	if suggestions == nil {
+		suggestions = []TransactionSuggestion{}
+	}
+	writeJSON(w, http.StatusOK, suggestions)
+}
+
+// suggestTransactionsForDocument queries expense/income transactions that could match the given document,
+// excluding transactions already linked to this document.
+func suggestTransactionsForDocument(txnType, docType string, docID int, docUnallocated models.Money,
+	docDate string, windowDays int, docRef, docContext string) []TransactionSuggestion {
+	if DB == nil {
+		return nil
+	}
+
+	// Only consider transactions with remaining unallocated balance and not already linked to this document
+	rows, err := DB.Query(`
+		SELECT t.id, t.amount, t.transaction_date, COALESCE(t.description, ''), COALESCE(t.reference, ''),
+			COALESCE((SELECT SUM(td.amount) FROM transaction_documents td WHERE td.transaction_id = t.id), 0)
+		FROM transactions t
+		WHERE t.type = ?
+		AND NOT EXISTS (
+			SELECT 1 FROM transaction_documents td2
+			WHERE td2.transaction_id = t.id
+			AND td2.document_type = ?
+			AND td2.document_id = ?
+		)
+	`, txnType, docType, docID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	var docDate_ time.Time
+	if docDate != "" {
+		docDate_, _ = time.Parse("2006-01-02", docDate)
+	}
+
+	var suggestions []TransactionSuggestion
+	for rows.Next() {
+		var id int
+		var txnAmt, txnAllocated models.Money
+		var txnDatePtr *string
+		var desc, ref string
+		if err := rows.Scan(&id, &txnAmt, &txnDatePtr, &desc, &ref, &txnAllocated); err != nil {
+			continue
+		}
+		txnDateStr := ""
+		if txnDatePtr != nil {
+			txnDateStr = *txnDatePtr
+		}
+		txnUnallocated := models.Money(int64(txnAmt) - int64(txnAllocated))
+		if txnUnallocated <= 0 {
+			continue
+		}
+
+		var confidence float64
+		var reasons []string
+		// A link can always be created for min(txnUnallocated, docUnallocated) paise,
+		// so linkable is always true as long as both sides have remaining balance.
+		linkable := true
+
+		if txnUnallocated == docUnallocated {
+			confidence += 0.5
+			reasons = append(reasons, "exact_amount_match")
+		} else if txnUnallocated < docUnallocated {
+			confidence += 0.3
+			reasons = append(reasons, "partial_amount_match")
+		} else {
+			confidence += 0.2
+			reasons = append(reasons, "amount_exceeds_unallocated")
+		}
+
+		// Date proximity: compare transaction date to document date
+		if !docDate_.IsZero() && txnDateStr != "" {
+			txnDate, err := time.Parse("2006-01-02", txnDateStr)
+			if err == nil {
+				diff := math.Abs(txnDate.Sub(docDate_).Hours() / 24)
+				if diff < float64(windowDays) {
+					score := 0.3 * (1.0 - diff/float64(windowDays))
+					confidence += score
+					reasons = append(reasons, "date_proximity")
+				}
+			}
+		}
+
+		// Description / reference similarity
+		txnSearchText := strings.ToLower(desc + " " + ref)
+		if ds, reason := matchDescScore(txnSearchText, docRef, docContext); ds > 0 {
+			confidence += ds
+			reasons = append(reasons, reason)
+		}
+
+		suggestions = append(suggestions, TransactionSuggestion{
+			TransactionID:   id,
+			TransactionDate: txnDateStr,
+			Description:     desc,
+			Reference:       ref,
+			Amount:          txnAmt,
+			Unallocated:     txnUnallocated,
+			Confidence:      math.Round(confidence*100) / 100,
+			MatchReasons:    reasons,
+			Linkable:        linkable,
+		})
+	}
+	return suggestions
+}
+
 // derefDate returns the first non-empty date from the provided pointers.
 func derefDate(dates ...*string) string {
 	for _, d := range dates {

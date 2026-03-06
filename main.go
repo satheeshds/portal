@@ -83,6 +83,7 @@ func main() {
 		r.Put("/bills/{id}", handlers.UpdateBill)
 		r.Delete("/bills/{id}", handlers.DeleteBill)
 		r.Get("/bills/{id}/links", handlers.GetBillLinks)
+		r.Get("/bills/{id}/match-suggestions", handlers.SuggestTransactionsForBill)
 
 		// Invoices
 		r.Get("/invoices", handlers.ListInvoices)
@@ -91,6 +92,7 @@ func main() {
 		r.Put("/invoices/{id}", handlers.UpdateInvoice)
 		r.Delete("/invoices/{id}", handlers.DeleteInvoice)
 		r.Get("/invoices/{id}/links", handlers.GetInvoiceLinks)
+		r.Get("/invoices/{id}/match-suggestions", handlers.SuggestTransactionsForInvoice)
 
 		// Transactions
 		r.Get("/transactions", handlers.ListTransactions)
@@ -115,6 +117,7 @@ func main() {
 		r.Put("/payouts/{id}", handlers.UpdatePayout)
 		r.Delete("/payouts/{id}", handlers.DeletePayout)
 		r.Get("/payouts/{id}/links", handlers.GetPayoutLinks)
+		r.Get("/payouts/{id}/match-suggestions", handlers.SuggestTransactionsForPayout)
 
 		// Recurring Payments
 		r.Get("/recurring-payments", handlers.ListRecurringPayments)
