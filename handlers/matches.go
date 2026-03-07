@@ -317,10 +317,17 @@ func suggestInvoices(amount models.Money, txnDate time.Time, txnSearchText strin
 	rows, err := DB.Query(`
 		SELECT i.id, COALESCE(i.invoice_number, ''), i.due_date, i.issue_date,
 			i.amount, COALESCE(i.notes, ''), COALESCE(c.name, ''),
-			COALESCE((SELECT SUM(td.amount) FROM transaction_documents td WHERE td.document_type = 'invoice' AND td.document_id = i.id), 0)
+			COALESCE(a.total_allocated, 0)
 		FROM invoices i
 		LEFT JOIN contacts c ON i.contact_id = c.id
+		LEFT JOIN (
+			SELECT document_id, SUM(amount) AS total_allocated
+			FROM transaction_documents
+			WHERE document_type = 'invoice'
+			GROUP BY document_id
+		) a ON a.document_id = i.id
 		WHERE i.status NOT IN ('received', 'cancelled')
+		  AND i.amount > COALESCE(a.total_allocated, 0)
 	`)
 	if err != nil {
 		return nil
@@ -390,8 +397,15 @@ func suggestPayouts(amount models.Money, txnDate time.Time, txnSearchText string
 	rows, err := DB.Query(`
 		SELECT p.id, COALESCE(p.utr_number, ''), p.settlement_date,
 			p.final_payout_amt, COALESCE(p.outlet_name, ''),
-			COALESCE((SELECT SUM(td.amount) FROM transaction_documents td WHERE td.document_type = 'payout' AND td.document_id = p.id), 0)
+			COALESCE(a.total_allocated, 0)
 		FROM payouts p
+		LEFT JOIN (
+			SELECT document_id, SUM(amount) AS total_allocated
+			FROM transaction_documents
+			WHERE document_type = 'payout'
+			GROUP BY document_id
+		) a ON a.document_id = p.id
+		WHERE p.final_payout_amt > COALESCE(a.total_allocated, 0)
 	`)
 	if err != nil {
 		return nil
