@@ -31,6 +31,10 @@ function toPaise(rupees) {
 function toRupees(paise) {
     return (paise / 100).toFixed(2);
 }
+function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    return dateStr.slice(0, 10);
+}
 
 // ===== Routing =====
 function getSection() {
@@ -141,7 +145,7 @@ async function renderDashboard() {
                 <tbody>
                     ${d.recent_transactions.length === 0 ? '<tr><td colspan="5" class="empty-state">No transactions yet</td></tr>' :
             d.recent_transactions.map(t => `<tr>
-                        <td>${t.transaction_date || '—'}</td>
+                        <td>${formatDate(t.transaction_date)}</td>
                         <td><span class="badge badge-${t.type}">${t.type}</span></td>
                         <td>${t.account_name || '—'}</td>
                         <td>${t.description || '—'}</td>
@@ -373,7 +377,7 @@ async function renderBills(params) {
             bills.map(b => `<tr>
                         <td>${b.bill_number || '—'}</td>
                         <td>${b.contact_name || '—'}</td>
-                        <td>${b.due_date || '—'}</td>
+                        <td>${formatDate(b.due_date)}</td>
                         <td class="money">${formatMoney(b.amount)}</td>
                         <td>
                             <span class="money">${formatMoney(b.allocated)}</span>
@@ -404,7 +408,7 @@ async function showDocumentLinks(type, id) {
             <tbody>
                 ${links.length === 0 ? '<tr><td colspan="4" class="empty-state">No payments linked</td></tr>' :
             links.map(l => `<tr>
-                    <td>${l.transaction_date || '—'}</td>
+                    <td>${formatDate(l.transaction_date)}</td>
                     <td>${l.reference || '—'}</td>
                     <td>${l.account_name}</td>
                     <td class="money">${formatMoney(l.amount)}</td>
@@ -528,7 +532,7 @@ async function renderInvoices(params) {
             invoices.map(inv => `<tr>
                         <td>${inv.invoice_number || '—'}</td>
                         <td>${inv.contact_name || '—'}</td>
-                        <td>${inv.due_date || '—'}</td>
+                        <td>${formatDate(inv.due_date)}</td>
                         <td class="money">${formatMoney(inv.amount)}</td>
                         <td>
                             <span class="money">${formatMoney(inv.allocated)}</span>
@@ -657,7 +661,7 @@ async function renderPayouts(params) {
                 <tbody>
                     ${payouts.length === 0 ? '<tr><td colspan="10" class="empty-state">No payouts found</td></tr>' :
             payouts.map(p => `<tr>
-                        <td>${p.settlement_date || '—'}</td>
+                        <td>${formatDate(p.settlement_date)}</td>
                         <td><span class="badge badge-${p.platform}">${p.platform}</span></td>
                         <td>${p.outlet_name}</td>
                         <td>${p.total_orders}</td>
@@ -822,7 +826,7 @@ async function renderTransactions(params) {
                 <tbody>
                     ${txns.length === 0 ? '<tr><td colspan="8" class="empty-state">No transactions yet</td></tr>' :
             txns.map(t => `<tr>
-                        <td>${t.transaction_date || '—'}</td>
+                        <td>${formatDate(t.transaction_date)}</td>
                         <td><span class="badge badge-${t.type}">${t.type}</span></td>
                         <td>${t.account_name || '—'}${t.type === 'expense' && t.transfer_account_name ? ' → ' + t.transfer_account_name : ''}</td>
                         <td>${t.description || '—'}${t.contact_name ? '<br><small style="color:var(--text-muted)">' + t.contact_name + '</small>' : ''}</td>
@@ -1100,7 +1104,7 @@ async function renderRecurringPayments(params) {
                         <td>${p.interval > 1 ? 'Every ' + esc(p.interval) + ' ' + esc(p.frequency) : esc(p.frequency.charAt(0).toUpperCase() + p.frequency.slice(1))}</td>
                         <td>${esc(p.account_name || '—')}</td>
                         <td>${esc(p.contact_name || '—')}</td>
-                        <td>${esc(p.next_due_date || '—')}</td>
+                        <td>${esc(formatDate(p.next_due_date))}</td>
                         <td><span class="badge badge-${esc(p.status)}">${esc(p.status)}</span></td>
                         <td class="actions-cell">
                             <button class="btn btn-ghost btn-sm" onclick="showRecurringPaymentForm(${p.id})">Edit</button>
