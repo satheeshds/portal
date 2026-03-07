@@ -141,8 +141,12 @@ func AutoMatch(w http.ResponseWriter, r *http.Request) {
 	updateDocumentStatus(best.DocumentType, best.DocumentID)
 
 	var td models.TransactionDocument
-	DB.QueryRow("SELECT id, transaction_id, document_type, document_id, amount, created_at FROM transaction_documents WHERE id = ?", linkID).
+	err = DB.QueryRow("SELECT id, transaction_id, document_type, document_id, amount, created_at FROM transaction_documents WHERE id = ?", linkID).
 		Scan(&td.ID, &td.TransactionID, &td.DocumentType, &td.DocumentID, &td.Amount, &td.CreatedAt)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	writeJSON(w, http.StatusOK, AutoMatchResult{Matched: true, Link: &td, Suggestion: &best})
 }
