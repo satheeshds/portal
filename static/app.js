@@ -25,11 +25,12 @@ function esc(str) {
 function formatMoney(paise) {
     return '₹' + (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-function toPaise(rupees) {
-    return Math.round(parseFloat(rupees || 0) * 100);
-}
 function toRupees(paise) {
     return (paise / 100).toFixed(2);
+}
+function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    return dateStr.slice(0, 10);
 }
 
 // ===== Routing =====
@@ -141,7 +142,7 @@ async function renderDashboard() {
                 <tbody>
                     ${d.recent_transactions.length === 0 ? '<tr><td colspan="5" class="empty-state">No transactions yet</td></tr>' :
             d.recent_transactions.map(t => `<tr>
-                        <td>${t.transaction_date || '—'}</td>
+                        <td>${formatDate(t.transaction_date)}</td>
                         <td><span class="badge badge-${t.type}">${t.type}</span></td>
                         <td>${t.account_name || '—'}</td>
                         <td>${t.description || '—'}</td>
@@ -228,7 +229,7 @@ async function saveAccount(e, id) {
     const body = JSON.stringify({
         name: form.name.value,
         type: form.type.value,
-        opening_balance: toPaise(form.opening_balance.value),
+        opening_balance: parseFloat(form.opening_balance.value || 0),
     });
     if (id) {
         await api(`/accounts/${id}`, { method: 'PUT', body });
@@ -373,7 +374,7 @@ async function renderBills(params) {
             bills.map(b => `<tr>
                         <td>${b.bill_number || '—'}</td>
                         <td>${b.contact_name || '—'}</td>
-                        <td>${b.due_date || '—'}</td>
+                        <td>${formatDate(b.due_date)}</td>
                         <td class="money">${formatMoney(b.amount)}</td>
                         <td>
                             <span class="money">${formatMoney(b.allocated)}</span>
@@ -404,7 +405,7 @@ async function showDocumentLinks(type, id) {
             <tbody>
                 ${links.length === 0 ? '<tr><td colspan="4" class="empty-state">No payments linked</td></tr>' :
             links.map(l => `<tr>
-                    <td>${l.transaction_date || '—'}</td>
+                    <td>${formatDate(l.transaction_date)}</td>
                     <td>${l.reference || '—'}</td>
                     <td>${l.account_name}</td>
                     <td class="money">${formatMoney(l.amount)}</td>
@@ -482,7 +483,7 @@ async function saveBill(e, id) {
         contact_id: f.contact_id.value ? parseInt(f.contact_id.value) : null,
         issue_date: f.issue_date.value || null,
         due_date: f.due_date.value || null,
-        amount: toPaise(f.amount.value),
+        amount: parseFloat(f.amount.value || 0),
         status: f.status.value,
         file_url: f.file_url.value || null,
         notes: f.notes.value || null,
@@ -528,7 +529,7 @@ async function renderInvoices(params) {
             invoices.map(inv => `<tr>
                         <td>${inv.invoice_number || '—'}</td>
                         <td>${inv.contact_name || '—'}</td>
-                        <td>${inv.due_date || '—'}</td>
+                        <td>${formatDate(inv.due_date)}</td>
                         <td class="money">${formatMoney(inv.amount)}</td>
                         <td>
                             <span class="money">${formatMoney(inv.allocated)}</span>
@@ -612,7 +613,7 @@ async function saveInvoice(e, id) {
         contact_id: f.contact_id.value ? parseInt(f.contact_id.value) : null,
         issue_date: f.issue_date.value || null,
         due_date: f.due_date.value || null,
-        amount: toPaise(f.amount.value),
+        amount: parseFloat(f.amount.value || 0),
         status: f.status.value,
         file_url: f.file_url.value || null,
         notes: f.notes.value || null,
@@ -657,7 +658,7 @@ async function renderPayouts(params) {
                 <tbody>
                     ${payouts.length === 0 ? '<tr><td colspan="10" class="empty-state">No payouts found</td></tr>' :
             payouts.map(p => `<tr>
-                        <td>${p.settlement_date || '—'}</td>
+                        <td>${esc(formatDate(p.settlement_date))}</td>
                         <td><span class="badge badge-${p.platform}">${p.platform}</span></td>
                         <td>${p.outlet_name}</td>
                         <td>${p.total_orders}</td>
@@ -774,12 +775,12 @@ async function savePayout(e, id) {
         period_end: f.period_end.value || null,
         settlement_date: f.settlement_date.value || null,
         total_orders: parseInt(f.total_orders.value || 0),
-        gross_sales_amt: toPaise(f.gross_sales_amt.value),
-        restaurant_discount_amt: toPaise(f.restaurant_discount_amt.value),
-        platform_commission_amt: toPaise(f.platform_commission_amt.value),
-        taxes_tcs_tds_amt: toPaise(f.taxes_tcs_tds_amt.value),
-        marketing_ads_amt: toPaise(f.marketing_ads_amt.value),
-        final_payout_amt: toPaise(f.final_payout_amt.value),
+        gross_sales_amt: parseFloat(f.gross_sales_amt.value || 0),
+        restaurant_discount_amt: parseFloat(f.restaurant_discount_amt.value || 0),
+        platform_commission_amt: parseFloat(f.platform_commission_amt.value || 0),
+        taxes_tcs_tds_amt: parseFloat(f.taxes_tcs_tds_amt.value || 0),
+        marketing_ads_amt: parseFloat(f.marketing_ads_amt.value || 0),
+        final_payout_amt: parseFloat(f.final_payout_amt.value || 0),
         utr_number: f.utr_number.value || '',
     });
     if (id) await api(`/payouts/${id}`, { method: 'PUT', body });
@@ -822,7 +823,7 @@ async function renderTransactions(params) {
                 <tbody>
                     ${txns.length === 0 ? '<tr><td colspan="8" class="empty-state">No transactions yet</td></tr>' :
             txns.map(t => `<tr>
-                        <td>${t.transaction_date || '—'}</td>
+                        <td>${formatDate(t.transaction_date)}</td>
                         <td><span class="badge badge-${t.type}">${t.type}</span></td>
                         <td>${t.account_name || '—'}${t.type === 'expense' && t.transfer_account_name ? ' → ' + t.transfer_account_name : ''}</td>
                         <td>${t.description || '—'}${t.contact_name ? '<br><small style="color:var(--text-muted)">' + t.contact_name + '</small>' : ''}</td>
@@ -920,7 +921,7 @@ async function saveTransaction(e, id) {
     const body = JSON.stringify({
         account_id: parseInt(f.account_id.value),
         type: f.type.value,
-        amount: toPaise(f.amount.value),
+        amount: parseFloat(f.amount.value || 0),
         transaction_date: f.transaction_date.value || null,
         description: f.description.value || null,
         reference: f.reference.value || null,
@@ -1038,7 +1039,7 @@ async function linkTransaction(e, txnId) {
             body: JSON.stringify({
                 document_type: f.document_type.value,
                 document_id: parseInt(f.document_id.value),
-                amount: toPaise(f.amount.value),
+                amount: parseFloat(f.amount.value || 0),
             }),
         });
         showTransactionLinks(txnId);
@@ -1100,7 +1101,7 @@ async function renderRecurringPayments(params) {
                         <td>${p.interval > 1 ? 'Every ' + esc(p.interval) + ' ' + esc(p.frequency) : esc(p.frequency.charAt(0).toUpperCase() + p.frequency.slice(1))}</td>
                         <td>${esc(p.account_name || '—')}</td>
                         <td>${esc(p.contact_name || '—')}</td>
-                        <td>${esc(p.next_due_date || '—')}</td>
+                        <td>${esc(formatDate(p.next_due_date))}</td>
                         <td><span class="badge badge-${esc(p.status)}">${esc(p.status)}</span></td>
                         <td class="actions-cell">
                             <button class="btn btn-ghost btn-sm" onclick="showRecurringPaymentForm(${p.id})">Edit</button>
@@ -1221,7 +1222,7 @@ async function saveRecurringPayment(e, id) {
     const body = JSON.stringify({
         name: f.name.value,
         type: f.type.value,
-        amount: toPaise(f.amount.value),
+        amount: parseFloat(f.amount.value || 0),
         account_id: parseInt(f.account_id.value),
         contact_id: f.contact_id.value ? parseInt(f.contact_id.value) : null,
         frequency: f.frequency.value,

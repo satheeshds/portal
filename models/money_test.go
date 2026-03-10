@@ -20,6 +20,7 @@ func TestMoney_UnmarshalJSON(t *testing.T) {
 		{"negative float", "-1.50", -150, false},
 		{"invalid string", "\"abc\"", 0, true},
 		{"null", "null", 0, false},
+		{"rupees with paise", "2122.90", 212290, false},
 	}
 
 	for _, tt := range tests {
