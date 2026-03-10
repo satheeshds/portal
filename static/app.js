@@ -25,9 +25,6 @@ function esc(str) {
 function formatMoney(paise) {
     return '₹' + (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-function toPaise(rupees) {
-    return Math.round(parseFloat(rupees || 0) * 100);
-}
 function toRupees(paise) {
     return (paise / 100).toFixed(2);
 }
