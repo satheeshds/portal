@@ -66,6 +66,8 @@ func GenerateOccurrences(database *sql.DB) error {
 			`, rp.id, nextDue.Format("2006-01-02"), rp.amount); err != nil {
 				slog.Error("failed to insert occurrence", "recurring_payment_id", rp.id,
 					"due_date", nextDue.Format("2006-01-02"), "error", err)
+				return fmt.Errorf("insert recurring_payment_occurrence (recurring_payment_id=%d, due_date=%s): %w",
+					rp.id, nextDue.Format("2006-01-02"), err)
 			}
 
 			nextDue = AdvanceDate(nextDue, rp.frequency, rp.interval)
