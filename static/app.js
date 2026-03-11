@@ -33,6 +33,12 @@ function formatDate(dateStr) {
     return dateStr.slice(0, 10);
 }
 
+function confidenceBadgeHtml(c) {
+    const pct = Math.round(c * 100);
+    const cls = pct >= 70 ? 'badge-paid' : (pct >= 40 ? 'badge-partial' : 'badge-cancelled');
+    return `<span class="badge ${cls}">${pct}%</span>`;
+}
+
 // ===== Routing =====
 function getSection() {
     const hash = location.hash.slice(1) || 'dashboard';
@@ -394,11 +400,16 @@ async function renderBills(params) {
 }
 
 async function showDocumentLinks(type, id) {
-    const links = await api(`/${type}s/${id}/links`);
+    const [links, suggestions, docData] = await Promise.all([
+        api(`/${type}s/${id}/links`),
+        api(`/${type}s/${id}/match-suggestions`),
+        api(`/${type}s/${id}`),
+    ]);
     let title = 'Document';
     if (type === 'bill') title = 'Bill';
     else if (type === 'invoice') title = 'Invoice';
     else if (type === 'payout') title = 'Payout';
+    const docUnallocated = docData.unallocated || 0;
     openModal(`${title} Payments (#${id})`, `
         <table style="margin-bottom:1rem">
             <thead><tr><th>Date</th><th>Ref</th><th>Account</th><th>Amount</th></tr></thead>
@@ -412,10 +423,49 @@ async function showDocumentLinks(type, id) {
                 </tr>`).join('')}
             </tbody>
         </table>
+
+        ${docUnallocated > 0 ? `
+        <h3 style="font-size:0.9rem;margin-bottom:0.5rem">Suggested Transactions
+            <span style="color:var(--text-muted);font-weight:400"> — ${formatMoney(docUnallocated)} unallocated</span>
+        </h3>
+        ${suggestions.length === 0 ? '<p style="color:var(--text-muted);margin-bottom:1rem;font-size:0.85rem">No matching transactions found.</p>' : `
+        <table style="margin-bottom:1rem">
+            <thead><tr><th>Date</th><th>Description</th><th>Unallocated</th><th>Confidence</th><th></th></tr></thead>
+            <tbody>
+                ${suggestions.map(s => {
+                    const linkAmt = Math.min(s.unallocated, docUnallocated);
+                    return `<tr>
+                        <td>${formatDate(s.transaction_date)}</td>
+                        <td>${esc(s.description || s.reference || '—')}</td>
+                        <td class="money">${formatMoney(s.unallocated)}</td>
+                        <td>${confidenceBadgeHtml(s.confidence)}</td>
+                        <td>${s.linkable ? `<button class="btn btn-primary btn-sm" onclick="linkDocumentToTransaction('${type}', ${id}, ${s.transaction_id}, ${linkAmt})">Link</button>` : ''}</td>
+                    </tr>`;
+                }).join('')}
+            </tbody>
+        </table>`}
+        ` : ''}
+
         <div class="form-actions">
             <button class="btn btn-primary" onclick="closeModal()">Close</button>
         </div>
     `);
+}
+
+async function linkDocumentToTransaction(docType, docId, txnId, amountPaise) {
+    try {
+        await api(`/transactions/${txnId}/links`, {
+            method: 'POST',
+            body: JSON.stringify({
+                document_type: docType,
+                document_id: docId,
+                amount: amountPaise / 100,
+            }),
+        });
+        showDocumentLinks(docType, docId);
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
 }
 
 async function showBillForm(id) {
@@ -946,12 +996,13 @@ async function deleteTransaction(id) {
 
 // ===== Transaction Links (Allocation) =====
 async function showTransactionLinks(txnId) {
-    const [links, txn, bills, invoices] = await Promise.all([
+    const [links, txn, bills, invoices, payouts, suggestions] = await Promise.all([
         api(`/transactions/${txnId}/links`),
         api(`/transactions/${txnId}`),
         api('/bills'),
         api('/invoices'),
         api('/payouts'),
+        api(`/transactions/${txnId}/match-suggestions`),
     ]);
 
     const unallocated = txn.unallocated;
@@ -976,6 +1027,26 @@ async function showTransactionLinks(txnId) {
                 </tr>`).join('')}
             </tbody>
         </table>` : '<p style="color:var(--text-muted);margin-bottom:1rem">No links yet</p>'}
+
+        ${unallocated > 0 && suggestions.length > 0 ? `
+        <h3 style="font-size:0.9rem;margin-bottom:0.5rem">Suggested Matches</h3>
+        <table style="margin-bottom:1rem">
+            <thead><tr><th>Type</th><th>Reference</th><th>Date</th><th>Unallocated</th><th>Confidence</th><th></th></tr></thead>
+            <tbody>
+                ${suggestions.map(s => {
+                    const linkAmt = Math.min(unallocated, s.unallocated);
+                    return `<tr>
+                        <td><span class="badge badge-${s.document_type}">${s.document_type.replace('_', ' ')}</span></td>
+                        <td>${esc(s.document_ref || '#' + s.document_id)}</td>
+                        <td>${formatDate(s.document_date)}</td>
+                        <td class="money">${formatMoney(s.unallocated)}</td>
+                        <td>${confidenceBadgeHtml(s.confidence)}</td>
+                        <td>${s.linkable ? `<button class="btn btn-primary btn-sm" onclick="quickLinkTransaction(${txnId}, '${s.document_type}', ${s.document_id}, ${linkAmt})">Link</button>` : ''}</td>
+                    </tr>`;
+                }).join('')}
+            </tbody>
+        </table>
+        ` : ''}
 
         ${unallocated > 0 ? `
         <h3 style="font-size:0.9rem;margin-bottom:0.75rem">Add Link</h3>
@@ -1012,6 +1083,22 @@ async function showTransactionLinks(txnId) {
         </script>
         ` : ''}
     `);
+}
+
+async function quickLinkTransaction(txnId, docType, docId, amountPaise) {
+    try {
+        await api(`/transactions/${txnId}/links`, {
+            method: 'POST',
+            body: JSON.stringify({
+                document_type: docType,
+                document_id: docId,
+                amount: amountPaise / 100,
+            }),
+        });
+        showTransactionLinks(txnId);
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
 }
 
 function updateDocOptions(type) {
@@ -1104,6 +1191,7 @@ async function renderRecurringPayments(params) {
                         <td>${esc(formatDate(p.next_due_date))}</td>
                         <td><span class="badge badge-${esc(p.status)}">${esc(p.status)}</span></td>
                         <td class="actions-cell">
+                            <button class="btn btn-ghost btn-sm" onclick="showRecurringPaymentSuggestions(${p.id})">Suggestions</button>
                             <button class="btn btn-ghost btn-sm" onclick="showRecurringPaymentForm(${p.id})">Edit</button>
                             <button class="btn btn-danger btn-sm" onclick="deleteRecurringPayment(${p.id})">Delete</button>
                         </td>
@@ -1248,6 +1336,33 @@ async function deleteRecurringPayment(id) {
     if (!confirm('Delete this recurring payment?')) return;
     await api(`/recurring-payments/${id}`, { method: 'DELETE' });
     renderRecurringPayments(getSection().params);
+}
+
+async function showRecurringPaymentSuggestions(id) {
+    const [rp, suggestions] = await Promise.all([
+        api(`/recurring-payments/${id}`),
+        api(`/recurring-payments/${id}/match-suggestions`),
+    ]);
+    openModal(`Suggested Transactions — ${esc(rp.name)}`, `
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1rem">
+            Informational only · ${formatMoney(rp.amount)} · ${esc(rp.frequency)}
+        </p>
+        ${suggestions.length === 0 ? '<p style="color:var(--text-muted)">No matching transactions found.</p>' : `
+        <table style="margin-bottom:1rem">
+            <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Confidence</th></tr></thead>
+            <tbody>
+                ${suggestions.map(s => `<tr>
+                    <td>${formatDate(s.transaction_date)}</td>
+                    <td>${esc(s.description || s.reference || '—')}</td>
+                    <td class="money">${formatMoney(s.amount)}</td>
+                    <td>${confidenceBadgeHtml(s.confidence)}</td>
+                </tr>`).join('')}
+            </tbody>
+        </table>`}
+        <div class="form-actions">
+            <button class="btn btn-primary" onclick="closeModal()">Close</button>
+        </div>
+    `);
 }
 
 // ===== Init =====

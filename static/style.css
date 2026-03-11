@@ -280,6 +280,10 @@ tr:hover td { background: var(--bg-hover); }
 .badge-bank { background: var(--info-subtle); color: var(--info); }
 .badge-cash { background: var(--success-subtle); color: var(--success); }
 .badge-credit_card { background: var(--warning-subtle); color: var(--warning); }
+.badge-bill { background: var(--danger-subtle); color: var(--danger); }
+.badge-invoice { background: var(--success-subtle); color: var(--success); }
+.badge-payout { background: var(--info-subtle); color: var(--info); }
+.badge-recurring_payment { background: var(--accent-subtle); color: var(--accent); }
 
 /* ===== Forms ===== */
 .form-group {
