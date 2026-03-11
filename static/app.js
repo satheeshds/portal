@@ -1343,7 +1343,7 @@ async function showRecurringPaymentSuggestions(id) {
         api(`/recurring-payments/${id}`),
         api(`/recurring-payments/${id}/match-suggestions`),
     ]);
-    openModal(`Suggested Transactions — ${esc(rp.name)}`, `
+    openModal(`Suggested Transactions — ${String(rp.name)}`, `
         <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1rem">
             Informational only · ${formatMoney(rp.amount)} · ${esc(rp.frequency)}
         </p>
