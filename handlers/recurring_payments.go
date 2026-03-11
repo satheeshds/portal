@@ -300,7 +300,11 @@ func GetRecurringPaymentOccurrences(w http.ResponseWriter, r *http.Request) {
 
 	// Verify the recurring payment exists
 	var exists bool
-	if err := DB.QueryRow("SELECT COUNT(*) > 0 FROM recurring_payments WHERE id = ?", rpID).Scan(&exists); err != nil || !exists {
+	if err := DB.QueryRow("SELECT COUNT(*) > 0 FROM recurring_payments WHERE id = ?", rpID).Scan(&exists); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !exists {
 		writeError(w, http.StatusNotFound, "recurring payment not found")
 		return
 	}
