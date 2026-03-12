@@ -172,7 +172,7 @@ var migrations = []string{
 		recurring_payment_id INTEGER NOT NULL,
 		due_date DATE NOT NULL,
 		amount INTEGER NOT NULL CHECK(amount > 0),
-		status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'paid', 'skipped')),
+		status TEXT NOT NULL DEFAULT 'pending',
 		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 	)`,
