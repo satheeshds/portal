@@ -50,8 +50,8 @@ func TestMatchDateScore(t *testing.T) {
 			txnDate:    parseDate("2024-01-15"),
 			docDate:    "2024-01-15",
 			windowDays: 30,
-			wantScore:  0.3,
-			wantReason: "date_proximity",
+			wantScore:  0.4,
+			wantReason: "exact_date_match",
 		},
 		{
 			name:       "within window",
@@ -92,6 +92,14 @@ func TestMatchDateScore(t *testing.T) {
 			windowDays: 30,
 			wantScore:  0,
 			wantReason: "",
+		},
+		{
+			name:       "one day apart gives date_proximity, not exact_date_match",
+			txnDate:    parseDate("2024-01-15"),
+			docDate:    "2024-01-16",
+			windowDays: 30,
+			wantScore:  0.29, // 0.3 * (1 - 1/30) ≈ 0.29
+			wantReason: "date_proximity",
 		},
 	}
 

@@ -67,6 +67,9 @@ func SuggestMatches(w http.ResponseWriter, r *http.Request) {
 		return suggestions[i].Confidence > suggestions[j].Confidence
 	})
 
+	if len(suggestions) > 5 {
+		suggestions = suggestions[:5]
+	}
 	if suggestions == nil {
 		suggestions = []MatchSuggestion{}
 	}
@@ -171,8 +174,9 @@ func buildMatchSearchText(desc, ref *string) string {
 	return strings.Join(parts, " ")
 }
 
-// matchDateScore returns a score (0–0.3) based on how close docDateStr is to txnDate.
-// windowDays is the maximum number of days for any score to be returned.
+// matchDateScore returns a score (0–0.4) based on how close docDateStr is to txnDate.
+// An exact date match returns 0.4; dates within windowDays use linear decay from 0.3 to 0.
+// windowDays is the maximum number of days for any proximity score to be returned.
 func matchDateScore(txnDate time.Time, docDateStr string, windowDays int) (float64, string) {
 	if txnDate.IsZero() || docDateStr == "" {
 		return 0, ""
@@ -182,6 +186,9 @@ func matchDateScore(txnDate time.Time, docDateStr string, windowDays int) (float
 		return 0, ""
 	}
 	diff := math.Abs(txnDate.Sub(docDate).Hours() / 24)
+	if diff == 0 {
+		return 0.4, "exact_date_match"
+	}
 	if diff >= float64(windowDays) {
 		return 0, ""
 	}
@@ -301,7 +308,7 @@ func suggestBills(amount models.Money, txnDate time.Time, txnSearchText string) 
 			DocumentDate: docDate,
 			Amount:       totalAmt,
 			Unallocated:  unallocated,
-			Confidence:   math.Round(confidence*100) / 100,
+			Confidence:   math.Min(1.0, math.Round(confidence*100)/100),
 			MatchReasons: reasons,
 			Linkable:     linkable,
 		})
@@ -381,7 +388,7 @@ func suggestInvoices(amount models.Money, txnDate time.Time, txnSearchText strin
 			DocumentDate: docDate,
 			Amount:       totalAmt,
 			Unallocated:  unallocated,
-			Confidence:   math.Round(confidence*100) / 100,
+			Confidence:   math.Min(1.0, math.Round(confidence*100)/100),
 			MatchReasons: reasons,
 			Linkable:     linkable,
 		})
@@ -464,7 +471,7 @@ func suggestPayouts(amount models.Money, txnDate time.Time, txnSearchText string
 			DocumentDate: docDate,
 			Amount:       totalAmt,
 			Unallocated:  unallocated,
-			Confidence:   math.Round(confidence*100) / 100,
+			Confidence:   math.Min(1.0, math.Round(confidence*100)/100),
 			MatchReasons: reasons,
 			Linkable:     linkable,
 		})
@@ -545,7 +552,7 @@ func suggestRecurringPayments(txnType string, amount models.Money, txnDate time.
 			DocumentDate: dueDate,
 			Amount:       occAmount,
 			Unallocated:  occUnallocated,
-			Confidence:   math.Round(confidence*100) / 100,
+			Confidence:   math.Min(1.0, math.Round(confidence*100)/100),
 			MatchReasons: reasons,
 			Linkable:     occUnallocated >= amount,
 		})
@@ -615,6 +622,9 @@ func SuggestTransactionsForBill(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(suggestions, func(i, j int) bool {
 		return suggestions[i].Confidence > suggestions[j].Confidence
 	})
+	if len(suggestions) > 5 {
+		suggestions = suggestions[:5]
+	}
 	if suggestions == nil {
 		suggestions = []TransactionSuggestion{}
 	}
@@ -663,6 +673,9 @@ func SuggestTransactionsForInvoice(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(suggestions, func(i, j int) bool {
 		return suggestions[i].Confidence > suggestions[j].Confidence
 	})
+	if len(suggestions) > 5 {
+		suggestions = suggestions[:5]
+	}
 	if suggestions == nil {
 		suggestions = []TransactionSuggestion{}
 	}
@@ -709,6 +722,9 @@ func SuggestTransactionsForPayout(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(suggestions, func(i, j int) bool {
 		return suggestions[i].Confidence > suggestions[j].Confidence
 	})
+	if len(suggestions) > 5 {
+		suggestions = suggestions[:5]
+	}
 	if suggestions == nil {
 		suggestions = []TransactionSuggestion{}
 	}
@@ -787,15 +803,18 @@ func suggestTransactionsForDocument(txnType, docType string, docID int, docUnall
 			reasons = append(reasons, "amount_exceeds_unallocated")
 		}
 
-		// Date proximity: compare transaction date to document date
+		// Date proximity: compare transaction date to document date.
+		// Transactions more than 90 days from the document date are excluded.
 		if !docDate_.IsZero() && txnDateStr != "" {
 			txnDate, err := time.Parse("2006-01-02", txnDateStr)
 			if err == nil {
 				diff := math.Abs(txnDate.Sub(docDate_).Hours() / 24)
-				if diff < float64(windowDays) {
-					score := 0.3 * (1.0 - diff/float64(windowDays))
-					confidence += score
-					reasons = append(reasons, "date_proximity")
+				if diff > 90 {
+					continue // exclude transactions more than 3 months away
+				}
+				if ds, reason := matchDateScore(txnDate, docDate, windowDays); ds > 0 {
+					confidence += ds
+					reasons = append(reasons, reason)
 				}
 			}
 		}
@@ -814,7 +833,7 @@ func suggestTransactionsForDocument(txnType, docType string, docID int, docUnall
 			Reference:       ref,
 			Amount:          txnAmt,
 			Unallocated:     txnUnallocated,
-			Confidence:      math.Round(confidence*100) / 100,
+			Confidence:      math.Min(1.0, math.Round(confidence*100)/100),
 			MatchReasons:    reasons,
 			Linkable:        linkable,
 		})
@@ -922,15 +941,18 @@ func SuggestTransactionsForRecurringPayment(w http.ResponseWriter, r *http.Reque
 			reasons = append(reasons, "approximate_amount_match")
 		}
 
-		// Date proximity to next_due_date (7-day window, same as forward direction)
+		// Date proximity to next_due_date (7-day window, same as forward direction).
+		// Transactions more than 90 days from the due date are excluded.
 		if !docDate_.IsZero() && txnDateStr != "" {
 			txnDate, err := time.Parse("2006-01-02", txnDateStr)
 			if err == nil {
 				diff := math.Abs(txnDate.Sub(docDate_).Hours() / 24)
-				if diff < 7 {
-					score := 0.3 * (1.0 - diff/7)
-					confidence += score
-					reasons = append(reasons, "date_proximity")
+				if diff > 90 {
+					continue // exclude transactions more than 3 months away
+				}
+				if ds, reason := matchDateScore(txnDate, docDate, 7); ds > 0 {
+					confidence += ds
+					reasons = append(reasons, reason)
 				}
 			}
 		}
@@ -950,7 +972,7 @@ func SuggestTransactionsForRecurringPayment(w http.ResponseWriter, r *http.Reque
 			Reference:       txnRef,
 			Amount:          txnAmt,
 			Unallocated:     txnUnallocated,
-			Confidence:      math.Round(confidence*100) / 100,
+			Confidence:      math.Min(1.0, math.Round(confidence*100)/100),
 			MatchReasons:    reasons,
 			Linkable:        txnUnallocated > 0,
 		})
@@ -959,6 +981,9 @@ func SuggestTransactionsForRecurringPayment(w http.ResponseWriter, r *http.Reque
 	sort.Slice(suggestions, func(i, j int) bool {
 		return suggestions[i].Confidence > suggestions[j].Confidence
 	})
+	if len(suggestions) > 5 {
+		suggestions = suggestions[:5]
+	}
 	if suggestions == nil {
 		suggestions = []TransactionSuggestion{}
 	}
