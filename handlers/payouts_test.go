@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -18,8 +18,8 @@ import (
 func setupTestRouter(t *testing.T) (*chi.Mux, func()) {
 	t.Helper()
 
-	dbPath := fmt.Sprintf("/tmp/test_accounting_%s.db", t.Name())
-	os.Remove(dbPath)
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, fmt.Sprintf("test_accounting_%s.db", t.Name()))
 
 	database, err := sql.Open("duckdb", dbPath)
 	if err != nil {
@@ -47,7 +47,6 @@ func setupTestRouter(t *testing.T) (*chi.Mux, func()) {
 	cleanup := func() {
 		DB = prevDB
 		database.Close()
-		os.Remove(dbPath)
 	}
 	return r, cleanup
 }
