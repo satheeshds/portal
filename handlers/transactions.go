@@ -267,40 +267,78 @@ func UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 func DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
+	// Start a DB transaction to ensure atomicity of the delete and related updates.
+	tx, err := DB.Begin()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	// Collect affected documents before deleting links so we can update their statuses.
 	type docRef struct {
 		docType string
 		docID   int
 	}
 	var affected []docRef
-	rows, err := DB.Query("SELECT document_type, document_id FROM transaction_documents WHERE transaction_id = ?", id)
-	if err == nil {
-		for rows.Next() {
-			var dr docRef
-			if rows.Scan(&dr.docType, &dr.docID) == nil {
-				affected = append(affected, dr)
-			}
+
+	rows, err := tx.Query("SELECT document_type, document_id FROM transaction_documents WHERE transaction_id = ?", id)
+	if err != nil {
+		_ = tx.Rollback()
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var dr docRef
+		if err := rows.Scan(&dr.docType, &dr.docID); err != nil {
+			_ = tx.Rollback()
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
 		}
-		rows.Close()
+		affected = append(affected, dr)
+	}
+	if err := rows.Err(); err != nil {
+		_ = tx.Rollback()
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 
 	// Delete all links for this transaction.
-	DB.Exec("DELETE FROM transaction_documents WHERE transaction_id = ?", id)
+	if _, err := tx.Exec("DELETE FROM transaction_documents WHERE transaction_id = ?", id); err != nil {
+		_ = tx.Rollback()
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Delete the transaction itself.
+	res, err := tx.Exec("DELETE FROM transactions WHERE id = ?", id)
+	if err != nil {
+		_ = tx.Rollback()
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if n, err := res.RowsAffected(); err != nil {
+		_ = tx.Rollback()
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	} else if n == 0 {
+		_ = tx.Rollback()
+		writeError(w, http.StatusNotFound, "transaction not found")
+		return
+	}
+
+	// Commit DB changes before updating document statuses.
+	if err := tx.Commit(); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	// Update document statuses now that the allocation has been removed.
 	for _, dr := range affected {
 		updateDocumentStatus(dr.docType, dr.docID)
 	}
 
-	res, err := DB.Exec("DELETE FROM transactions WHERE id = ?", id)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		writeError(w, http.StatusNotFound, "transaction not found")
-		return
-	}
 	writeJSON(w, http.StatusOK, map[string]string{"message": "deleted"})
 }
 
