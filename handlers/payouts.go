@@ -271,17 +271,42 @@ func UpdatePayout(w http.ResponseWriter, r *http.Request) {
 func DeletePayout(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
-	// Remove all transaction links for this payout so transaction allocated amounts stay accurate.
-	DB.Exec("DELETE FROM transaction_documents WHERE document_type = 'payout' AND document_id = ?", id)
-
-	res, err := DB.Exec("DELETE FROM payouts WHERE id = ?", id)
+	tx, err := DB.BeginTx(r.Context(), nil)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if n, _ := res.RowsAffected(); n == 0 {
+
+	// Remove all transaction links for this payout so transaction allocated amounts stay accurate.
+	if _, err := tx.Exec("DELETE FROM transaction_documents WHERE document_type = 'payout' AND document_id = ?", id); err != nil {
+		_ = tx.Rollback()
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	res, err := tx.Exec("DELETE FROM payouts WHERE id = ?", id)
+	if err != nil {
+		_ = tx.Rollback()
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	n, err := res.RowsAffected()
+	if err != nil {
+		_ = tx.Rollback()
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if n == 0 {
+		_ = tx.Rollback()
 		writeError(w, http.StatusNotFound, "payout not found")
 		return
 	}
+
+	if err := tx.Commit(); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	writeJSON(w, http.StatusOK, map[string]string{"message": "deleted"})
 }
