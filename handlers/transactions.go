@@ -463,8 +463,10 @@ func updateDocumentStatus(docType string, docID int) {
 		// Payouts don't have a status field in the current schema
 		return
 	case "recurring_payment":
-		// Recurring payments use their own status lifecycle (active/paused/cancelled/completed)
-		// and are not updated based on transaction allocation
+		// Legacy support: recurring payments use their own status lifecycle
+		// (active/paused/cancelled/completed) and are not updated based on
+		// transaction allocation. New links with this type cannot be created;
+		// this case exists only for backward compatibility with legacy records.
 		return
 	case "recurring_payment_occurrence":
 		// Occurrences track their own paid/pending status based on allocation
