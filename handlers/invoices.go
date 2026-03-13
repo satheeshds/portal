@@ -219,6 +219,10 @@ func UpdateInvoice(w http.ResponseWriter, r *http.Request) {
 // @Security     BasicAuth
 func DeleteInvoice(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+
+	// Remove all transaction links for this invoice so transaction allocated amounts stay accurate.
+	DB.Exec("DELETE FROM transaction_documents WHERE document_type = 'invoice' AND document_id = ?", id)
+
 	res, err := DB.Exec("DELETE FROM invoices WHERE id = ?", id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

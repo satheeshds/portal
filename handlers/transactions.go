@@ -266,6 +266,32 @@ func UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 // @Security     BasicAuth
 func DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+
+	// Collect affected documents before deleting links so we can update their statuses.
+	type docRef struct {
+		docType string
+		docID   int
+	}
+	var affected []docRef
+	rows, err := DB.Query("SELECT document_type, document_id FROM transaction_documents WHERE transaction_id = ?", id)
+	if err == nil {
+		for rows.Next() {
+			var dr docRef
+			if rows.Scan(&dr.docType, &dr.docID) == nil {
+				affected = append(affected, dr)
+			}
+		}
+		rows.Close()
+	}
+
+	// Delete all links for this transaction.
+	DB.Exec("DELETE FROM transaction_documents WHERE transaction_id = ?", id)
+
+	// Update document statuses now that the allocation has been removed.
+	for _, dr := range affected {
+		updateDocumentStatus(dr.docType, dr.docID)
+	}
+
 	res, err := DB.Exec("DELETE FROM transactions WHERE id = ?", id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

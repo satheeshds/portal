@@ -270,6 +270,10 @@ func UpdatePayout(w http.ResponseWriter, r *http.Request) {
 // @Security     BasicAuth
 func DeletePayout(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+
+	// Remove all transaction links for this payout so transaction allocated amounts stay accurate.
+	DB.Exec("DELETE FROM transaction_documents WHERE document_type = 'payout' AND document_id = ?", id)
+
 	res, err := DB.Exec("DELETE FROM payouts WHERE id = ?", id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
