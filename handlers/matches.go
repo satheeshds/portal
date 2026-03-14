@@ -12,6 +12,8 @@ import (
 	"github.com/satheeshds/accounting/models"
 )
 
+const maxSuggestions = 5
+
 // MatchSuggestion represents a candidate document that could match a bank statement entry.
 type MatchSuggestion struct {
 	DocumentType string       `json:"document_type"` // bill, invoice, payout, recurring_payment
@@ -67,8 +69,8 @@ func SuggestMatches(w http.ResponseWriter, r *http.Request) {
 		return suggestions[i].Confidence > suggestions[j].Confidence
 	})
 
-	if len(suggestions) > 5 {
-		suggestions = suggestions[:5]
+	if len(suggestions) > maxSuggestions {
+		suggestions = suggestions[:maxSuggestions]
 	}
 	if suggestions == nil {
 		suggestions = []MatchSuggestion{}
