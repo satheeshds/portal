@@ -14,6 +14,11 @@ import (
 
 const maxSuggestions = 5
 
+// staleDateWindow is the number of days beyond windowDays at which the stale-date score
+// reaches zero. Transactions between windowDays and staleDateWindow days from the document
+// date receive a reduced "stale_date_proximity" score instead of being hard-excluded.
+const staleDateWindow = 180
+
 // MatchSuggestion represents a candidate document that could match a bank statement entry.
 type MatchSuggestion struct {
 	DocumentType string       `json:"document_type"` // bill, invoice, payout, recurring_payment
@@ -176,9 +181,7 @@ func buildMatchSearchText(desc, ref *string) string {
 	return strings.Join(parts, " ")
 }
 
-// matchDateScore returns a score (0–0.4) based on how close docDateStr is to txnDate.
-// An exact date match returns 0.4; dates within windowDays use linear decay from 0.3 to 0.
-// windowDays is the maximum number of days for any proximity score to be returned.
+// matchDateScore parses docDateStr and delegates to matchDateScoreTime.
 func matchDateScore(txnDate time.Time, docDateStr string, windowDays int) (float64, string) {
 	if txnDate.IsZero() || docDateStr == "" {
 		return 0, ""
@@ -187,15 +190,34 @@ func matchDateScore(txnDate time.Time, docDateStr string, windowDays int) (float
 	if err != nil {
 		return 0, ""
 	}
+	return matchDateScoreTime(txnDate, docDate, windowDays)
+}
+
+// matchDateScoreTime returns a date-proximity score (0–0.4) for two already-parsed dates,
+// avoiding redundant string parsing and diff computation in callers that already hold time.Time values.
+//
+//   - diff == 0              → 0.4,  "exact_date_match"
+//   - 0 < diff < windowDays → linear 0.3→0, "date_proximity"
+//   - windowDays ≤ diff < staleDateWindow → linear 0.1→0, "stale_date_proximity"
+//   - diff ≥ staleDateWindow → 0
+func matchDateScoreTime(txnDate, docDate time.Time, windowDays int) (float64, string) {
+	if txnDate.IsZero() || docDate.IsZero() {
+		return 0, ""
+	}
 	diff := math.Abs(txnDate.Sub(docDate).Hours() / 24)
 	if diff == 0 {
 		return 0.4, "exact_date_match"
 	}
-	if diff >= float64(windowDays) {
-		return 0, ""
+	if diff < float64(windowDays) {
+		score := 0.3 * (1.0 - diff/float64(windowDays))
+		return score, "date_proximity"
 	}
-	score := 0.3 * (1.0 - diff/float64(windowDays))
-	return score, "date_proximity"
+	if diff < staleDateWindow {
+		staleRange := float64(staleDateWindow - windowDays)
+		score := 0.1 * (1.0 - (diff-float64(windowDays))/staleRange)
+		return score, "stale_date_proximity"
+	}
+	return 0, ""
 }
 
 // matchDescScore returns a score (0–0.2) based on whether docRef or docContext tokens
@@ -624,8 +646,8 @@ func SuggestTransactionsForBill(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(suggestions, func(i, j int) bool {
 		return suggestions[i].Confidence > suggestions[j].Confidence
 	})
-	if len(suggestions) > 5 {
-		suggestions = suggestions[:5]
+	if len(suggestions) > maxSuggestions {
+		suggestions = suggestions[:maxSuggestions]
 	}
 	if suggestions == nil {
 		suggestions = []TransactionSuggestion{}
@@ -675,8 +697,8 @@ func SuggestTransactionsForInvoice(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(suggestions, func(i, j int) bool {
 		return suggestions[i].Confidence > suggestions[j].Confidence
 	})
-	if len(suggestions) > 5 {
-		suggestions = suggestions[:5]
+	if len(suggestions) > maxSuggestions {
+		suggestions = suggestions[:maxSuggestions]
 	}
 	if suggestions == nil {
 		suggestions = []TransactionSuggestion{}
@@ -724,8 +746,8 @@ func SuggestTransactionsForPayout(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(suggestions, func(i, j int) bool {
 		return suggestions[i].Confidence > suggestions[j].Confidence
 	})
-	if len(suggestions) > 5 {
-		suggestions = suggestions[:5]
+	if len(suggestions) > maxSuggestions {
+		suggestions = suggestions[:maxSuggestions]
 	}
 	if suggestions == nil {
 		suggestions = []TransactionSuggestion{}
@@ -806,15 +828,12 @@ func suggestTransactionsForDocument(txnType, docType string, docID int, docUnall
 		}
 
 		// Date proximity: compare transaction date to document date.
-		// Transactions more than 90 days from the document date are excluded.
+		// Dates within windowDays receive a "date_proximity" score; dates between windowDays
+		// and staleDateWindow days receive a reduced "stale_date_proximity" score.
 		if !docDate_.IsZero() && txnDateStr != "" {
 			txnDate, err := time.Parse("2006-01-02", txnDateStr)
 			if err == nil {
-				diff := math.Abs(txnDate.Sub(docDate_).Hours() / 24)
-				if diff > 90 {
-					continue // exclude transactions more than 3 months away
-				}
-				if ds, reason := matchDateScore(txnDate, docDate, windowDays); ds > 0 {
+				if ds, reason := matchDateScoreTime(txnDate, docDate_, windowDays); ds > 0 {
 					confidence += ds
 					reasons = append(reasons, reason)
 				}
@@ -944,15 +963,12 @@ func SuggestTransactionsForRecurringPayment(w http.ResponseWriter, r *http.Reque
 		}
 
 		// Date proximity to next_due_date (7-day window, same as forward direction).
-		// Transactions more than 90 days from the due date are excluded.
+		// Dates within 7 days receive a "date_proximity" score; dates between 7 days
+		// and staleDateWindow days receive a reduced "stale_date_proximity" score.
 		if !docDate_.IsZero() && txnDateStr != "" {
 			txnDate, err := time.Parse("2006-01-02", txnDateStr)
 			if err == nil {
-				diff := math.Abs(txnDate.Sub(docDate_).Hours() / 24)
-				if diff > 90 {
-					continue // exclude transactions more than 3 months away
-				}
-				if ds, reason := matchDateScore(txnDate, docDate, 7); ds > 0 {
+				if ds, reason := matchDateScoreTime(txnDate, docDate_, 7); ds > 0 {
 					confidence += ds
 					reasons = append(reasons, reason)
 				}
@@ -983,8 +999,8 @@ func SuggestTransactionsForRecurringPayment(w http.ResponseWriter, r *http.Reque
 	sort.Slice(suggestions, func(i, j int) bool {
 		return suggestions[i].Confidence > suggestions[j].Confidence
 	})
-	if len(suggestions) > 5 {
-		suggestions = suggestions[:5]
+	if len(suggestions) > maxSuggestions {
+		suggestions = suggestions[:maxSuggestions]
 	}
 	if suggestions == nil {
 		suggestions = []TransactionSuggestion{}
