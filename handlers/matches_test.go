@@ -50,8 +50,8 @@ func TestMatchDateScore(t *testing.T) {
 			txnDate:    parseDate("2024-01-15"),
 			docDate:    "2024-01-15",
 			windowDays: 30,
-			wantScore:  0.3,
-			wantReason: "date_proximity",
+			wantScore:  0.4,
+			wantReason: "exact_date_match",
 		},
 		{
 			name:       "within window",
@@ -62,12 +62,12 @@ func TestMatchDateScore(t *testing.T) {
 			wantReason: "date_proximity",
 		},
 		{
-			name:       "outside window",
+			name:       "outside window enters stale zone",
 			txnDate:    parseDate("2024-01-15"),
 			docDate:    "2023-12-01",
 			windowDays: 30,
-			wantScore:  0,
-			wantReason: "",
+			wantScore:  0.09, // diff=45; 0.1 * (1 - (diff-windowDays)/staleRange) = 0.1 * (1 - 15/150) = 0.09
+			wantReason: "stale_date_proximity",
 		},
 		{
 			name:       "zero txn date returns no score",
@@ -86,9 +86,33 @@ func TestMatchDateScore(t *testing.T) {
 			wantReason: "",
 		},
 		{
-			name:       "exact boundary (window edge excluded)",
+			name:       "at window boundary enters stale zone",
 			txnDate:    parseDate("2024-01-15"),
 			docDate:    "2024-02-14",
+			windowDays: 30,
+			wantScore:  0.1, // 0.1 * (1 - 0/150) = 0.1
+			wantReason: "stale_date_proximity",
+		},
+		{
+			name:       "one day apart gives date_proximity, not exact_date_match",
+			txnDate:    parseDate("2024-01-15"),
+			docDate:    "2024-01-16",
+			windowDays: 30,
+			wantScore:  0.29, // 0.3 * (1 - 1/30) ≈ 0.29
+			wantReason: "date_proximity",
+		},
+		{
+			name:       "stale zone mid-point",
+			txnDate:    parseDate("2024-01-15"),
+			docDate:    "2023-10-07", // 100 days before
+			windowDays: 30,
+			wantScore:  0.05, // 0.1 * (1 - (diff-windowDays)/staleRange) = 0.1 * (1 - 70/150) ≈ 0.0533 → rounds to 0.05
+			wantReason: "stale_date_proximity",
+		},
+		{
+			name:       "beyond stale window returns no score",
+			txnDate:    parseDate("2024-01-15"),
+			docDate:    "2023-06-25", // 204 days before, beyond staleDateWindow=180
 			windowDays: 30,
 			wantScore:  0,
 			wantReason: "",
@@ -105,6 +129,84 @@ func TestMatchDateScore(t *testing.T) {
 			}
 			if gotReason != tt.wantReason {
 				t.Errorf("matchDateScore() reason = %q, want %q", gotReason, tt.wantReason)
+			}
+		})
+	}
+}
+
+func TestMatchDateScoreTime(t *testing.T) {
+	parseDate := func(s string) time.Time {
+		d, _ := time.Parse("2006-01-02", s)
+		return d
+	}
+
+	tests := []struct {
+		name       string
+		txnDate    time.Time
+		docDate    time.Time
+		windowDays int
+		wantScore  float64
+		wantReason string
+	}{
+		{
+			name:       "exact same day",
+			txnDate:    parseDate("2024-01-15"),
+			docDate:    parseDate("2024-01-15"),
+			windowDays: 30,
+			wantScore:  0.4,
+			wantReason: "exact_date_match",
+		},
+		{
+			name:       "within window",
+			txnDate:    parseDate("2024-01-15"),
+			docDate:    parseDate("2024-01-10"),
+			windowDays: 30,
+			wantScore:  0.25, // 0.3 * (1 - 5/30)
+			wantReason: "date_proximity",
+		},
+		{
+			name:       "in stale zone",
+			txnDate:    parseDate("2024-01-15"),
+			docDate:    parseDate("2023-12-01"), // 45 days
+			windowDays: 30,
+			wantScore:  0.09, // 0.1 * (1 - 15/150) = 0.1 * 0.9
+			wantReason: "stale_date_proximity",
+		},
+		{
+			name:       "beyond stale window",
+			txnDate:    parseDate("2024-01-15"),
+			docDate:    parseDate("2023-06-25"), // 204 days
+			windowDays: 30,
+			wantScore:  0,
+			wantReason: "",
+		},
+		{
+			name:       "zero txnDate returns no score",
+			txnDate:    time.Time{},
+			docDate:    parseDate("2024-01-15"),
+			windowDays: 30,
+			wantScore:  0,
+			wantReason: "",
+		},
+		{
+			name:       "zero docDate returns no score",
+			txnDate:    parseDate("2024-01-15"),
+			docDate:    time.Time{},
+			windowDays: 30,
+			wantScore:  0,
+			wantReason: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotScore, gotReason := matchDateScoreTime(tt.txnDate, tt.docDate, tt.windowDays)
+			rounded := float64(int(gotScore*100+0.5)) / 100
+			if rounded != tt.wantScore {
+				t.Errorf("matchDateScoreTime() score = %v, want %v", gotScore, tt.wantScore)
+			}
+			if gotReason != tt.wantReason {
+				t.Errorf("matchDateScoreTime() reason = %q, want %q", gotReason, tt.wantReason)
 			}
 		})
 	}
