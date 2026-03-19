@@ -169,7 +169,10 @@ func metadataBaseName(metadataPath string) string {
 	base := filepath.Base(metadataPath)
 	name := strings.TrimSuffix(base, filepath.Ext(base))
 	if name == "" {
-		return base
+		name = strings.TrimPrefix(base, ".")
+	}
+	if name == "" {
+		return "accounting"
 	}
 	return name
 }

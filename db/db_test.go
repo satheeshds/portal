@@ -1,6 +1,7 @@
 package db
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -17,11 +18,11 @@ func TestLoadConnectionConfigDefaults(t *testing.T) {
 	if cfg.metadataPath != "./data/accounting.ducklake" {
 		t.Fatalf("metadata path = %q, want %q", cfg.metadataPath, "./data/accounting.ducklake")
 	}
-	if cfg.dataPath != "data/accounting" && cfg.dataPath != "./data/accounting" {
-		t.Fatalf("data path = %q, want %q", cfg.dataPath, "./data/accounting")
+	if filepath.Clean(cfg.dataPath) != filepath.Clean("./data/accounting") {
+		t.Fatalf("data path = %q, want cleaned path %q", cfg.dataPath, filepath.Clean("./data/accounting"))
 	}
-	if cfg.bootstrapDBPath != "data/accounting.bootstrap.duckdb" && cfg.bootstrapDBPath != "./data/accounting.bootstrap.duckdb" {
-		t.Fatalf("bootstrap path = %q, want %q", cfg.bootstrapDBPath, "./data/accounting.bootstrap.duckdb")
+	if filepath.Clean(cfg.bootstrapDBPath) != filepath.Clean("./data/accounting.bootstrap.duckdb") {
+		t.Fatalf("bootstrap path = %q, want cleaned path %q", cfg.bootstrapDBPath, filepath.Clean("./data/accounting.bootstrap.duckdb"))
 	}
 	if !cfg.preferDuckLake {
 		t.Fatal("preferDuckLake = false, want true")
