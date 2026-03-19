@@ -58,13 +58,13 @@ func Open() (*sql.DB, error) {
 }
 
 func openDuckLake(cfg connectionConfig) (*sql.DB, error) {
-	if err := os.MkdirAll(filepath.Dir(cfg.metadataPath), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(cfg.metadataPath), 0755); err != nil {
 		return nil, fmt.Errorf("failed to create ducklake metadata directory: %w", err)
 	}
-	if err := os.MkdirAll(cfg.dataPath, 0o755); err != nil {
+	if err := os.MkdirAll(cfg.dataPath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create ducklake data directory: %w", err)
 	}
-	if err := os.MkdirAll(filepath.Dir(cfg.bootstrapDBPath), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(cfg.bootstrapDBPath), 0755); err != nil {
 		return nil, fmt.Errorf("failed to create duckdb bootstrap directory: %w", err)
 	}
 

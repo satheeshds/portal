@@ -57,3 +57,19 @@ func TestDuckLakeStatementsEscapePaths(t *testing.T) {
 		t.Fatalf("unexpected USE statement %q", stmts[3])
 	}
 }
+
+func TestMetadataBaseNameEdgeCases(t *testing.T) {
+	tests := map[string]string{
+		".ducklake":          "ducklake",
+		".":                  "accounting",
+		"/tmp/.ducklake":     "ducklake",
+		"/tmp/accounting.db": "accounting",
+		"/tmp/accounting":    "accounting",
+	}
+
+	for input, want := range tests {
+		if got := metadataBaseName(input); got != want {
+			t.Fatalf("metadataBaseName(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
