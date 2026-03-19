@@ -180,6 +180,9 @@ func metadataBaseName(metadataPath string) string {
 }
 
 func escapeDuckLakePath(path string) string {
+	// Paths are interpolated only into single-quoted SQL string literals for ATTACH,
+	// so doubling embedded single quotes is sufficient to keep the entire path inside
+	// the literal. The values come from local configuration, not user-facing inputs.
 	return strings.ReplaceAll(path, "'", "''")
 }
 
