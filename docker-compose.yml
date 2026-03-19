@@ -6,7 +6,8 @@ services:
     volumes:
       - accounting_data:/data
     environment:
-      - DB_PATH=/data/accounting.db
+      - DB_PATH=/data/accounting.ducklake
+      - DUCKLAKE_DATA_PATH=/data/accounting
       - AUTH_USER=admin
       - AUTH_PASS=changeme
       - LOG_LEVEL=info

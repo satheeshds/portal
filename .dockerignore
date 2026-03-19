@@ -11,6 +11,7 @@ obj/
 data/
 *.db
 *.duckdb
+*.ducklake
 
 # Git
 .git

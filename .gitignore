@@ -10,6 +10,8 @@ accounting-test
 # Database and Data
 data/
 *.db
+*.duckdb
+*.ducklake
 *.db-shm
 *.db-wal
 

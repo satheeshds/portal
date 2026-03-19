@@ -45,7 +45,8 @@ COPY --from=builder /accounting /usr/local/bin/accounting
 RUN mkdir -p /data
 VOLUME /data
 
-ENV DB_PATH=/data/accounting.db
+ENV DB_PATH=/data/accounting.ducklake
+ENV DUCKLAKE_DATA_PATH=/data/accounting
 ENV PORT=80
 
 EXPOSE 80
