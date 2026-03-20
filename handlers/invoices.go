@@ -395,7 +395,10 @@ func CreateInvoiceItem(w http.ResponseWriter, r *http.Request) {
 
 	// Verify invoice exists.
 	var exists bool
-	if err := DB.QueryRow("SELECT COUNT(*) > 0 FROM invoices WHERE id = ?", invoiceID).Scan(&exists); err != nil || !exists {
+	if err := DB.QueryRow("SELECT COUNT(*) > 0 FROM invoices WHERE id = ?", invoiceID).Scan(&exists); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to verify invoice existence: "+err.Error())
+		return
+	} else if !exists {
 		writeError(w, http.StatusNotFound, "invoice not found")
 		return
 	}
