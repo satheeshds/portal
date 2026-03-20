@@ -66,9 +66,15 @@ func getBillByID(id int) (models.Bill, error) {
 }
 
 func insertBillItems(tx *sql.Tx, billID int, items []models.BillItemInput) error {
+	stmt, err := tx.Prepare(`INSERT INTO bill_items (bill_id, description, quantity, unit, unit_price, amount)
+		VALUES (?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
 	for _, item := range items {
-		if _, err := tx.Exec(`INSERT INTO bill_items (bill_id, description, quantity, unit, unit_price, amount)
-			VALUES (?, ?, ?, ?, ?, ?)`, billID, item.Description, item.Quantity, item.Unit, item.UnitPrice, item.Amount); err != nil {
+		if _, err := stmt.Exec(billID, item.Description, item.Quantity, item.Unit, item.UnitPrice, item.Amount); err != nil {
 			return err
 		}
 	}
