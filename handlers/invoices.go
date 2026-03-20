@@ -359,7 +359,12 @@ func ListInvoiceItems(w http.ResponseWriter, r *http.Request) {
 
 	// Verify invoice exists.
 	var exists bool
-	if err := DB.QueryRow("SELECT COUNT(*) > 0 FROM invoices WHERE id = ?", id).Scan(&exists); err != nil || !exists {
+	err := DB.QueryRow("SELECT COUNT(*) > 0 FROM invoices WHERE id = ?", id).Scan(&exists)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !exists {
 		writeError(w, http.StatusNotFound, "invoice not found")
 		return
 	}
