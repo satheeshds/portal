@@ -382,7 +382,12 @@ func CreateBillItem(w http.ResponseWriter, r *http.Request) {
 
 	// Verify bill exists.
 	var exists bool
-	if err := DB.QueryRow("SELECT COUNT(*) > 0 FROM bills WHERE id = ?", billID).Scan(&exists); err != nil || !exists {
+	err := DB.QueryRow("SELECT COUNT(*) > 0 FROM bills WHERE id = ?", billID).Scan(&exists)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to verify bill existence: "+err.Error())
+		return
+	}
+	if !exists {
 		writeError(w, http.StatusNotFound, "bill not found")
 		return
 	}
