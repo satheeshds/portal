@@ -86,6 +86,18 @@ func (r *RecurringPaymentInput) Validate() string {
 	if r.StartDate == "" {
 		return "start_date is required"
 	}
+	if err := NormalizeDate(&r.StartDate); err != nil {
+		return "start_date: " + err.Error()
+	}
+	if err := NormalizeDate(r.EndDate); err != nil {
+		return "end_date: " + err.Error()
+	}
+	if err := NormalizeDate(r.NextDueDate); err != nil {
+		return "next_due_date: " + err.Error()
+	}
+	if err := NormalizeDate(r.LastGeneratedDate); err != nil {
+		return "last_generated_date: " + err.Error()
+	}
 	switch r.Status {
 	case "", "active", "paused", "cancelled", "completed":
 	default:

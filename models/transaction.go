@@ -53,5 +53,8 @@ func (t *TransactionInput) Validate() string {
 	if t.Type == "transfer" && t.TransferAccountID != nil && *t.TransferAccountID == t.AccountID {
 		return "transfer_account_id must differ from account_id"
 	}
+	if err := NormalizeDate(t.TransactionDate); err != nil {
+		return "transaction_date: " + err.Error()
+	}
 	return ""
 }

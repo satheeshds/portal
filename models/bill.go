@@ -50,6 +50,12 @@ func (b *BillInput) Validate() string {
 	if b.Status == "" {
 		b.Status = "draft"
 	}
+	if err := NormalizeDate(b.IssueDate); err != nil {
+		return "issue_date: " + err.Error()
+	}
+	if err := NormalizeDate(b.DueDate); err != nil {
+		return "due_date: " + err.Error()
+	}
 	for i := range b.Items {
 		if msg := b.Items[i].Validate(); msg != "" {
 			return fmt.Sprintf("items[%d]: %s", i, msg)

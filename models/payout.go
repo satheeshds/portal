@@ -57,5 +57,14 @@ func (p *PayoutInput) Validate() string {
 	default:
 		return "platform must be one of: swiggy, zomato, swiggy-dineout"
 	}
+	if err := NormalizeDate(p.PeriodStart); err != nil {
+		return "period_start: " + err.Error()
+	}
+	if err := NormalizeDate(p.PeriodEnd); err != nil {
+		return "period_end: " + err.Error()
+	}
+	if err := NormalizeDate(p.SettlementDate); err != nil {
+		return "settlement_date: " + err.Error()
+	}
 	return ""
 }
