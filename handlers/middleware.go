@@ -125,11 +125,11 @@ func redactHeaders(h http.Header) http.Header {
 	return clone
 }
 
-// DebugLogger is middleware that logs the full request and response bodies at debug level.
+// RequestLogger is middleware that logs the full request and response bodies at debug level.
 // It is a no-op when debug logging is not enabled.
 // WARNING: enabling debug logging will expose full request and response bodies in logs,
 // including potentially sensitive data such as passwords and tokens.
-func DebugLogger(next http.Handler) http.Handler {
+func RequestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !slog.Default().Enabled(r.Context(), slog.LevelDebug) {
 			next.ServeHTTP(w, r)
