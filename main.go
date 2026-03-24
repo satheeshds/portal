@@ -22,7 +22,7 @@ import (
 //go:embed static/*
 var staticFiles embed.FS
 
-// @title           Accounting Software API
+// @title           Portal API
 // @version         1.0.0
 // @description     API for managing accounts, contacts, bills, invoices, and transactions.
 // @host            localhost:8080

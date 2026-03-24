@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: Accounting Software API
+  title: Portal API
   version: 1.0.0
   description: API for managing accounts, contacts, bills, invoices, and transactions.
 servers:

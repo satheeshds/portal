@@ -12,11 +12,11 @@ import (
 
 // Open creates and returns a DuckDB database connection.
 // The database file is stored at the path specified by the DB_PATH environment variable,
-// defaulting to "./data/accounting.db".
+// defaulting to "./data/portal.db".
 func Open() (*sql.DB, error) {
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
-		dbPath = "./data/accounting.db"
+		dbPath = "./data/portal.db"
 	}
 
 	// Ensure the directory exists

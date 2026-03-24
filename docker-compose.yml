@@ -1,16 +1,16 @@
 services:
-  accounting:
+  portal:
     build: .
     ports:
-      - "8080:8080"
+      - "8080:80"
     volumes:
-      - accounting_data:/data
+      - portal_data:/data
     environment:
-      - DB_PATH=/data/accounting.db
+      - DB_PATH=/data/portal.db
       - AUTH_USER=admin
       - AUTH_PASS=changeme
       - LOG_LEVEL=info
     restart: unless-stopped
 
 volumes:
-  accounting_data:
+  portal_data:

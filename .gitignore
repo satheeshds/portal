@@ -4,8 +4,8 @@
 *.dll
 *.so
 *.dylib
-accounting
-accounting-test
+portal
+portal-test
 
 # Database and Data
 data/

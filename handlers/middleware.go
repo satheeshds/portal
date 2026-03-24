@@ -53,7 +53,7 @@ func BasicAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u, p, ok := r.BasicAuth()
 		if !ok || u != user || p != pass {
-			w.Header().Set("WWW-Authenticate", `Basic realm="accounting"`)
+			w.Header().Set("WWW-Authenticate", `Basic realm="portal"`)
 			writeError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
