@@ -1,46 +1,31 @@
-SHELL := /bin/bash
-
-APP_NAME := accounting
-BINARY := $(APP_NAME)
-IMAGE ?= $(APP_NAME)
+APP_NAME ?= accounting
+IMAGE ?= satheeshds/$(APP_NAME)
 TAG ?= latest
-APP_PORT ?= 8080
-HOST_PORT ?= 8080
-CONTAINER_PORT ?= 80
-DATA_DIR ?= $(PWD)/data
-DB_PATH ?= $(DATA_DIR)/accounting.db
+DOCKER ?= docker
+COMPOSE ?= docker compose
+ENV_FILE ?= .env
 
-.PHONY: help build test run clean docker-build docker-run docker-push
+export DOCKER_BUILDKIT ?= 1
 
-help: ## Show available targets
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "%-20s %s\n", $$1, $$2}'
+.PHONY: help image push compose-up compose-down build test
 
-build: ## Build the accounting binary
-	go build -o $(BINARY) .
+help: ## List available targets
+	@grep -E '^[a-zA-Z0-9_-]+:.*##' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*## "}; {printf "%-15s %s\n", $$1, $$2}'
 
-test: ## Run all Go tests
+image: ## Build the Docker image
+	$(DOCKER) build -t $(IMAGE):$(TAG) .
+
+push: ## Push the Docker image
+	$(DOCKER) push $(IMAGE):$(TAG)
+
+compose-up: ## Start the stack with docker compose
+	$(COMPOSE) --env-file $(ENV_FILE) up -d --build
+
+compose-down: ## Stop the stack
+	$(COMPOSE) down
+
+build: ## Build the Go binary
+	go build .
+
+test: ## Run Go tests
 	go test ./...
-
-run: ## Run the service locally with Go
-	mkdir -p $(DATA_DIR)
-	DB_PATH=$(DB_PATH) PORT=$(APP_PORT) go run .
-
-clean: ## Remove built artifacts
-	rm -f $(BINARY)
-
-docker-build: ## Build the Docker image
-	docker build -t $(IMAGE):$(TAG) .
-
-docker-run: docker-build ## Run the Docker image locally
-	mkdir -p $(DATA_DIR)
-	@test -n "$$AUTH_USER" || (echo "AUTH_USER environment variable is required" >&2 && exit 1)
-	@test -n "$$AUTH_PASS" || (echo "AUTH_PASS environment variable is required" >&2 && exit 1)
-	docker run --rm -p $(HOST_PORT):$(CONTAINER_PORT) -v $(DATA_DIR):/data \
-		-e DB_PATH=/data/accounting.db \
-		-e PORT=$(CONTAINER_PORT) \
-		-e AUTH_USER=$$AUTH_USER \
-		-e AUTH_PASS=$$AUTH_PASS \
-		$(IMAGE):$(TAG)
-
-docker-push: ## Push the Docker image to the configured registry
-	docker push $(IMAGE):$(TAG)

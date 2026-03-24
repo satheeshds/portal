@@ -1,14 +1,15 @@
-## Accounting Service
+# Accounting Service
 
-Make targets are provided for common developer workflows:
+Make targets are provided for common workflows:
 
+- `make image` – build the Docker image (`IMAGE` defaults to `satheeshds/accounting`, `TAG` defaults to `latest`).
+- `make push` – push the Docker image.
+- `make compose-up` – start the stack with docker compose (uses `ENV_FILE`, default `.env`).
+- `make compose-down` – stop the stack.
 - `make build` – build the Go binary.
 - `make test` – run the Go test suite.
-- `make run` – run locally (writes the DB to `./data/accounting.db` by default; listens on the port specified by `APP_PORT` (default `8080`), which the Makefile passes to the service as `PORT`).
-- `make docker-build` – build the Docker image (defaults to `accounting:latest`).
-- `make docker-run` – builds (via the `docker-build` dependency) and runs the image locally, mapping host port `HOST_PORT` (default `8080`) to container port `CONTAINER_PORT` (default `80`).
-- `make docker-push` – push the tagged image.
 
-Export `AUTH_USER` and `AUTH_PASS` in your shell (or prefix the command) before invoking `make docker-run`; these credentials are required for the container to start.
-
-Use `make help` to list all available targets.
+Notes:
+- Docker BuildKit is enabled by default (`DOCKER_BUILDKIT=1`).
+- Override `IMAGE`, `TAG`, `DOCKER`, `COMPOSE`, or `ENV_FILE` as needed, e.g. `ENV_FILE=.env.local make compose-up`.
+- Ensure required environment variables (e.g. `AUTH_USER`, `AUTH_PASS`, `DB_PATH`) are set via your env file or shell before running compose.
