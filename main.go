@@ -13,9 +13,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/satheeshds/accounting/db"
-	_ "github.com/satheeshds/accounting/docs"
-	"github.com/satheeshds/accounting/handlers"
+	"github.com/satheeshds/portal/db"
+	_ "github.com/satheeshds/portal/docs"
+	"github.com/satheeshds/portal/handlers"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 

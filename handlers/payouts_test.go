@@ -10,16 +10,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/satheeshds/accounting/db"
 	_ "github.com/duckdb/duckdb-go/v2"
+	"github.com/go-chi/chi/v5"
+	"github.com/satheeshds/portal/db"
 )
 
 func setupTestRouter(t *testing.T) (*chi.Mux, func()) {
 	t.Helper()
 
 	dir := t.TempDir()
-	dbPath := filepath.Join(dir, fmt.Sprintf("test_accounting_%s.db", t.Name()))
+	dbPath := filepath.Join(dir, fmt.Sprintf("test_portal_%s.db", t.Name()))
 
 	database, err := sql.Open("duckdb", dbPath)
 	if err != nil {

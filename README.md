@@ -2,7 +2,7 @@
 
 Make targets are provided for common workflows:
 
-- `make image` – build the Docker image (`IMAGE` defaults to `satheeshds/accounting`, `TAG` defaults to `latest`).
+- `make image` – build the Docker image (`IMAGE` defaults to `satheeshds/portal`, `TAG` defaults to `latest`).
 - `make push` – push the Docker image.
 - `make compose-up` – start the stack with docker compose (uses `ENV_FILE`, default `.env`).
 - `make compose-down` – stop the stack.

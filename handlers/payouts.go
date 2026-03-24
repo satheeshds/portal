@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/satheeshds/accounting/models"
+	"github.com/satheeshds/portal/models"
 )
 
 const payoutSelectQuery = `SELECT id, outlet_name, platform, period_start, period_end, settlement_date,

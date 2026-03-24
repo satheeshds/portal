@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/satheeshds/accounting/models"
+	"github.com/satheeshds/portal/models"
 )
 
 const recurringPaymentSelectQuery = `SELECT r.id, r.name, r.type, r.amount, r.account_id, r.contact_id,
@@ -289,7 +289,7 @@ type RecurringPaymentLink struct {
 	Reference         string `json:"reference"`
 	AccountName       string `json:"account_name"`
 	OccurrenceDueDate string `json:"occurrence_due_date"` // the billing period this transaction covers
-	OccurrenceStatus  string `json:"occurrence_status"`  // pending, paid, or skipped
+	OccurrenceStatus  string `json:"occurrence_status"`   // pending, paid, or skipped
 }
 
 // GetRecurringPaymentOccurrences lists all auto-generated occurrences for a recurring payment.

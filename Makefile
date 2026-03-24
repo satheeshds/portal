@@ -1,4 +1,4 @@
-APP_NAME ?= accounting
+APP_NAME ?= portal
 IMAGE ?= satheeshds/$(APP_NAME)
 TAG ?= latest
 DOCKER ?= docker

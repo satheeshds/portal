@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/satheeshds/accounting/models"
+	"github.com/satheeshds/portal/models"
 )
 
 const accountSelectQuery = `SELECT id, name, type, opening_balance, created_at, updated_at,

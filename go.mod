@@ -1,4 +1,4 @@
-module github.com/satheeshds/accounting
+module github.com/satheeshds/portal
 
 go 1.24.4
 

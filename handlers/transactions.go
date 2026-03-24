@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/satheeshds/accounting/models"
+	"github.com/satheeshds/portal/models"
 )
 
 const txnSelectQuery = `SELECT t.id, t.account_id, t.type, t.amount, t.transaction_date,

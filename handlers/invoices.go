@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/satheeshds/accounting/models"
+	"github.com/satheeshds/portal/models"
 )
 
 const invoiceSelectQuery = `SELECT i.id, i.contact_id, i.invoice_number, i.issue_date, i.due_date, i.amount,
