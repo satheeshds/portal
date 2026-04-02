@@ -122,14 +122,7 @@ func validateNexusToken(nexusBase, token string) bool {
 	if len(parts) != 3 {
 		return false
 	}
-	// Decode the claims (second part). Pad to a multiple of 4 for standard base64.
-	claimsB64 := parts[1]
-	switch len(claimsB64) % 4 {
-	case 2:
-		claimsB64 += "=="
-	case 3:
-		claimsB64 += "="
-	}
+	// Decode the claims (second part). RawURLEncoding handles unpadded base64url.
 	claimsJSON, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
 		return false
