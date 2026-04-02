@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -81,6 +82,16 @@ func (d *PortalDB) Prepare(query string) (*sql.Stmt, error) {
 // Begin starts a transaction and returns a PortalTx that also auto-rebinds.
 func (d *PortalDB) Begin() (*PortalTx, error) {
 	tx, err := d.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	return &PortalTx{tx}, nil
+}
+
+// BeginTx starts a transaction with context and options, and returns a PortalTx
+// that auto-rebinds ? placeholders to $N.
+func (d *PortalDB) BeginTx(ctx context.Context, opts *sql.TxOptions) (*PortalTx, error) {
+	tx, err := d.DB.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
