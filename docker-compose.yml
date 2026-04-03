@@ -9,15 +9,24 @@ services:
       - NEXUS_USER=portal
       - NEXUS_PASSWORD=changeme
       - NEXUS_DATABASE=lake
+      - NEXUS_CONTROL_URL=http://nexus-control:8080
+      - ADMIN_API_KEY=changeme
       - AUTH_USER=admin
       - AUTH_PASS=changeme
       - LOG_LEVEL=info
     restart: unless-stopped
     depends_on:
       - nexus-gateway
+      - nexus-control
 
   nexus-gateway:
     image: satheeshds/nexus-gateway:latest
     ports:
       - "5433:5433"
+    restart: unless-stopped
+
+  nexus-control:
+    image: satheeshds/nexus-control:latest
+    ports:
+      - "8081:8080"
     restart: unless-stopped

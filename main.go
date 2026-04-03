@@ -46,7 +46,7 @@ func main() {
 	defer database.Close()
 
 	// Run migrations
-	if err := db.Migrate(database); err != nil {
+	if err := db.Migrate(); err != nil {
 		slog.Error("failed to run migrations", "error", err)
 		os.Exit(1)
 	}
