@@ -25,7 +25,9 @@ var staticFiles embed.FS
 // @description     API for managing accounts, contacts, bills, invoices, and transactions.
 // @host            localhost:8080
 // @BasePath        /api/v1
-// @securityDefinitions.basic  BasicAuth
+// @securityDefinitions.apikey  BearerAuth
+// @in                          header
+// @name                        Authorization
 
 func main() {
 	// Configure structured logging
@@ -41,9 +43,13 @@ func main() {
 	r.Use(handlers.RequestLogger)
 	r.Use(middleware.Recoverer)
 
-	// API routes with basic auth
+	// Public auth routes (proxy to Nexus gateway)
+	r.Post("/api/auth/register", handlers.Register)
+	r.Post("/api/auth/login", handlers.Login)
+
+	// API routes with bearer token / basic auth
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Use(handlers.BasicAuth)
+		r.Use(handlers.BearerAuth)
 		r.Use(handlers.DBRequired)
 
 		// Accounts

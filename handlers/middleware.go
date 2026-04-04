@@ -3,6 +3,8 @@ package handlers
 import (
 	"bufio"
 	"bytes"
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +12,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/satheeshds/portal/db"
 )
@@ -26,6 +30,44 @@ type Response struct {
 // DB is the shared database connection used by all handlers.
 var DB *db.PortalDB
 
+type contextKey int
+
+const dbKey contextKey = 0
+
+// withDB stores a per-request PortalDB in the context.
+func withDB(ctx context.Context, d *db.PortalDB) context.Context {
+	return context.WithValue(ctx, dbKey, d)
+}
+
+// getDB returns the per-request PortalDB from the context, falling back to the
+// global DB so that tests that set the global variable continue to work.
+func getDB(r *http.Request) *db.PortalDB {
+	if d, ok := r.Context().Value(dbKey).(*db.PortalDB); ok && d != nil {
+		return d
+	}
+	return DB
+}
+
+// extractTenantID parses the JWT payload (second dot-separated part) and returns
+// the tenant_id claim value, or ("", false) if it cannot be extracted.
+func extractTenantID(token string) (string, bool) {
+	parts := strings.SplitN(token, ".", 3)
+	if len(parts) != 3 {
+		return "", false
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "", false
+	}
+	var claims struct {
+		TenantID string `json:"tenant_id"`
+	}
+	if err := json.Unmarshal(payload, &claims); err != nil || claims.TenantID == "" {
+		return "", false
+	}
+	return claims.TenantID, true
+}
+
 // writeJSON writes a JSON response with the given status code.
 func writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -41,11 +83,10 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 }
 
 // DBRequired is middleware that returns 503 Service Unavailable when no database
-// connection has been configured. A per-request connection will be injected here
-// once JWT-based authentication is implemented.
+// connection has been configured.
 func DBRequired(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if DB == nil {
+		if getDB(r) == nil {
 			writeError(w, http.StatusServiceUnavailable, "database connection not available")
 			return
 		}
@@ -73,6 +114,114 @@ func BasicAuth(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// BearerAuth is middleware that enforces Bearer token authentication.
+// When NEXUS_CONTROL_URL is set it validates the token against the Nexus gateway;
+// otherwise it simply requires a non-empty Bearer token to be present.
+// If neither NEXUS_CONTROL_URL nor AUTH_USER/AUTH_PASS are configured the middleware
+// falls back to the unauthenticated (open) behaviour and logs a warning.
+func BearerAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nexus := os.Getenv("NEXUS_CONTROL_URL")
+		authUser := os.Getenv("AUTH_USER")
+		authPass := os.Getenv("AUTH_PASS")
+
+		// If nothing is configured, warn and pass through (same as original BasicAuth).
+		if nexus == "" && authUser == "" && authPass == "" {
+			slog.Warn("no auth configured (NEXUS_CONTROL_URL, AUTH_USER, AUTH_PASS), API is unauthenticated")
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Prefer Bearer token when NEXUS_CONTROL_URL is configured.
+		if nexus != "" {
+			authHeader := r.Header.Get("Authorization")
+			if len(authHeader) < 8 || authHeader[:7] != "Bearer " {
+				writeError(w, http.StatusUnauthorized, "missing or invalid bearer token")
+				return
+			}
+			token := authHeader[7:]
+			if !validateNexusToken(token) {
+				writeError(w, http.StatusUnauthorized, "unauthorized")
+				return
+			}
+
+			// Open a per-request DB connection to the Nexus gateway when NEXUS_HOST
+			// is configured, using tenant_id as the PostgreSQL username and the JWT
+			// token as the password. The connection is closed explicitly after the
+			// handler returns to ensure it stays open for the full request lifecycle.
+			// Note: the DSN embeds the JWT token; avoid logging it in error paths.
+			var reqDB *db.PortalDB
+			if os.Getenv("NEXUS_HOST") != "" {
+				tenantID, ok := extractTenantID(token)
+				if !ok {
+					writeError(w, http.StatusUnauthorized, "unauthorized")
+					return
+				}
+
+				opened, err := db.OpenWithCredentials(tenantID, token)
+				if err != nil {
+					slog.WarnContext(r.Context(), "failed to open per-request DB connection",
+						"tenant_id", tenantID, "error", err)
+					writeError(w, http.StatusServiceUnavailable, "service unavailable")
+					return
+				}
+
+				reqDB = opened
+				r = r.WithContext(withDB(r.Context(), reqDB))
+			}
+
+			next.ServeHTTP(w, r)
+
+			if reqDB != nil {
+				reqDB.Close()
+			}
+			return
+		}
+
+		// Fall back to Basic Auth when AUTH_USER/AUTH_PASS are set.
+		u, p, ok := r.BasicAuth()
+		if !ok || u != authUser || p != authPass {
+			w.Header().Set("WWW-Authenticate", `Basic realm="portal"`)
+			writeError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// validateNexusToken checks whether a Bearer token has a valid JWT structure and
+// has not expired. It does NOT verify the cryptographic signature — full signature
+// verification happens at the Nexus layer when the token is forwarded for data
+// operations. This guard prevents obviously invalid or expired tokens from passing.
+// A missing or zero exp claim is treated as invalid.
+func validateNexusToken(token string) bool {
+	if token == "" {
+		return false
+	}
+	// A JWT consists of three base64url-encoded parts separated by dots.
+	parts := strings.SplitN(token, ".", 3)
+	if len(parts) != 3 {
+		return false
+	}
+	// Decode the claims (second part). RawURLEncoding handles unpadded base64url.
+	claimsJSON, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return false
+	}
+	var claims struct {
+		Exp int64 `json:"exp"`
+	}
+	if err := json.Unmarshal(claimsJSON, &claims); err != nil {
+		return false
+	}
+	// Require a present (non-zero) exp claim and reject expired tokens.
+	if claims.Exp == 0 || time.Now().Unix() >= claims.Exp {
+		slog.Debug("rejected bearer token: missing or expired exp claim", "exp", claims.Exp)
+		return false
+	}
+	return true
 }
 
 // responseRecorder wraps http.ResponseWriter to capture the status code and body for logging.

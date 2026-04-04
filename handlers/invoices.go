@@ -31,8 +31,8 @@ func scanInvoice(scanner interface{ Scan(...any) error }) (models.Invoice, error
 	return inv, err
 }
 
-func loadInvoiceItems(invoiceID int) ([]models.InvoiceItem, error) {
-	rows, err := DB.Query(`SELECT id, invoice_id, description, quantity, unit, unit_price, amount, created_at, updated_at
+func loadInvoiceItems(d *db.PortalDB, invoiceID int) ([]models.InvoiceItem, error) {
+	rows, err := d.Query(`SELECT id, invoice_id, description, quantity, unit, unit_price, amount, created_at, updated_at
 		FROM invoice_items WHERE invoice_id = ? ORDER BY id ASC`, invoiceID)
 	if err != nil {
 		return nil, err
@@ -57,12 +57,12 @@ func loadInvoiceItems(invoiceID int) ([]models.InvoiceItem, error) {
 	return items, nil
 }
 
-func getInvoiceByID(id int) (models.Invoice, error) {
-	inv, err := scanInvoice(DB.QueryRow(invoiceSelectQuery+" WHERE i.id = ?", id))
+func getInvoiceByID(d *db.PortalDB, id int) (models.Invoice, error) {
+	inv, err := scanInvoice(d.QueryRow(invoiceSelectQuery+" WHERE i.id = ?", id))
 	if err != nil {
 		return inv, err
 	}
-	inv.Items, err = loadInvoiceItems(id)
+	inv.Items, err = loadInvoiceItems(d, id)
 	return inv, err
 }
 
@@ -93,6 +93,7 @@ func insertInvoiceItems(tx *db.PortalTx, invoiceID int, items []models.InvoiceIt
 // @Router       /invoices [get]
 // @Security     BasicAuth
 func ListInvoices(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	query := invoiceSelectQuery
 	var conditions []string
 	var args []any
@@ -124,7 +125,7 @@ func ListInvoices(w http.ResponseWriter, r *http.Request) {
 	}
 	query += " ORDER BY i.created_at DESC"
 
-	rows, err := DB.Query(query, args...)
+	rows, err := d.Query(query, args...)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -158,8 +159,9 @@ func ListInvoices(w http.ResponseWriter, r *http.Request) {
 // @Router       /invoices/{id} [get]
 // @Security     BasicAuth
 func GetInvoice(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	inv, err := getInvoiceByID(id)
+	inv, err := getInvoiceByID(d, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "invoice not found")
@@ -183,6 +185,7 @@ func GetInvoice(w http.ResponseWriter, r *http.Request) {
 // @Router       /invoices [post]
 // @Security     BasicAuth
 func CreateInvoice(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	var input models.InvoiceInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON")
@@ -193,7 +196,7 @@ func CreateInvoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := DB.Begin()
+	tx, err := d.Begin()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -222,7 +225,7 @@ func CreateInvoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	inv, err := getInvoiceByID(id)
+	inv, err := getInvoiceByID(d, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to re-fetch created invoice: "+err.Error())
 		return
@@ -244,6 +247,7 @@ func CreateInvoice(w http.ResponseWriter, r *http.Request) {
 // @Router       /invoices/{id} [put]
 // @Security     BasicAuth
 func UpdateInvoice(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	var input models.InvoiceInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -255,7 +259,7 @@ func UpdateInvoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := DB.Begin()
+	tx, err := d.Begin()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -293,7 +297,7 @@ func UpdateInvoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	inv, err := getInvoiceByID(id)
+	inv, err := getInvoiceByID(d, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to re-fetch updated invoice: "+err.Error())
 		return
@@ -312,9 +316,10 @@ func UpdateInvoice(w http.ResponseWriter, r *http.Request) {
 // @Router       /invoices/{id} [delete]
 // @Security     BasicAuth
 func DeleteInvoice(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
-	tx, err := DB.Begin()
+	tx, err := d.Begin()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -371,8 +376,9 @@ func DeleteInvoice(w http.ResponseWriter, r *http.Request) {
 // @Router       /invoices/{id}/links [get]
 // @Security     BasicAuth
 func GetInvoiceLinks(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	rows, err := DB.Query(`SELECT td.id, td.transaction_id, td.document_type, td.document_id, td.amount, td.created_at,
+	rows, err := d.Query(`SELECT td.id, td.transaction_id, td.document_type, td.document_id, td.amount, td.created_at,
 		COALESCE(t.transaction_date, ''), COALESCE(t.description, ''), COALESCE(t.reference, ''), a.name as account_name
 		FROM transaction_documents td
 		JOIN transactions t ON td.transaction_id = t.id
@@ -420,11 +426,12 @@ type InvoiceLink struct {
 // @Router       /invoices/{id}/items [get]
 // @Security     BasicAuth
 func ListInvoiceItems(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
 	// Verify invoice exists.
 	var exists bool
-	err := DB.QueryRow("SELECT COUNT(*) > 0 FROM invoices WHERE id = ?", id).Scan(&exists)
+	err := d.QueryRow("SELECT COUNT(*) > 0 FROM invoices WHERE id = ?", id).Scan(&exists)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -434,7 +441,7 @@ func ListInvoiceItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, err := loadInvoiceItems(id)
+	items, err := loadInvoiceItems(d, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -456,11 +463,12 @@ func ListInvoiceItems(w http.ResponseWriter, r *http.Request) {
 // @Router       /invoices/{id}/items [post]
 // @Security     BasicAuth
 func CreateInvoiceItem(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	invoiceID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
 	// Verify invoice exists.
 	var exists bool
-	if err := DB.QueryRow("SELECT COUNT(*) > 0 FROM invoices WHERE id = ?", invoiceID).Scan(&exists); err != nil {
+	if err := d.QueryRow("SELECT COUNT(*) > 0 FROM invoices WHERE id = ?", invoiceID).Scan(&exists); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to verify invoice existence: "+err.Error())
 		return
 	} else if !exists {
@@ -479,7 +487,7 @@ func CreateInvoiceItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var itemID int
-	err := DB.QueryRow(`INSERT INTO invoice_items (invoice_id, description, quantity, unit, unit_price, amount)
+	err := d.QueryRow(`INSERT INTO invoice_items (invoice_id, description, quantity, unit, unit_price, amount)
 		VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
 		invoiceID, input.Description, input.Quantity, input.Unit, input.UnitPrice, input.Amount).Scan(&itemID)
 	if err != nil {
@@ -488,7 +496,7 @@ func CreateInvoiceItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var item models.InvoiceItem
-	err = DB.QueryRow(`SELECT id, invoice_id, description, quantity, unit, unit_price, amount, created_at, updated_at
+	err = d.QueryRow(`SELECT id, invoice_id, description, quantity, unit, unit_price, amount, created_at, updated_at
 		FROM invoice_items WHERE id = ?`, itemID).Scan(
 		&item.ID, &item.InvoiceID, &item.Description, &item.Quantity,
 		&item.Unit, &item.UnitPrice, &item.Amount, &item.CreatedAt, &item.UpdatedAt)
@@ -514,6 +522,7 @@ func CreateInvoiceItem(w http.ResponseWriter, r *http.Request) {
 // @Router       /invoices/{id}/items/{itemId} [put]
 // @Security     BasicAuth
 func UpdateInvoiceItem(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	invoiceID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	itemID, _ := strconv.Atoi(chi.URLParam(r, "itemId"))
 
@@ -527,7 +536,7 @@ func UpdateInvoiceItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := DB.Exec(`UPDATE invoice_items SET description = ?, quantity = ?, unit = ?, unit_price = ?, amount = ?,
+	res, err := d.Exec(`UPDATE invoice_items SET description = ?, quantity = ?, unit = ?, unit_price = ?, amount = ?,
 		updated_at = CURRENT_TIMESTAMP WHERE id = ? AND invoice_id = ?`,
 		input.Description, input.Quantity, input.Unit, input.UnitPrice, input.Amount, itemID, invoiceID)
 	if err != nil {
@@ -540,7 +549,7 @@ func UpdateInvoiceItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var item models.InvoiceItem
-	err = DB.QueryRow(`SELECT id, invoice_id, description, quantity, unit, unit_price, amount, created_at, updated_at
+	err = d.QueryRow(`SELECT id, invoice_id, description, quantity, unit, unit_price, amount, created_at, updated_at
 		FROM invoice_items WHERE id = ?`, itemID).Scan(
 		&item.ID, &item.InvoiceID, &item.Description, &item.Quantity,
 		&item.Unit, &item.UnitPrice, &item.Amount, &item.CreatedAt, &item.UpdatedAt)
@@ -563,10 +572,11 @@ func UpdateInvoiceItem(w http.ResponseWriter, r *http.Request) {
 // @Router       /invoices/{id}/items/{itemId} [delete]
 // @Security     BasicAuth
 func DeleteInvoiceItem(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	invoiceID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	itemID, _ := strconv.Atoi(chi.URLParam(r, "itemId"))
 
-	res, err := DB.Exec("DELETE FROM invoice_items WHERE id = ? AND invoice_id = ?", itemID, invoiceID)
+	res, err := d.Exec("DELETE FROM invoice_items WHERE id = ? AND invoice_id = ?", itemID, invoiceID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

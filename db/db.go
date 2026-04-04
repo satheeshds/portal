@@ -9,6 +9,34 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// OpenWithCredentials opens a single-connection PortalDB using the given
+// tenant_id as the PostgreSQL username and the JWT token as the password.
+// It reads NEXUS_HOST (default "localhost"), NEXUS_PORT (default "5433"),
+// and NEXUS_DATABASE (default "lake") from the environment.
+// The connection is not pinged; the first query will surface any auth errors.
+func OpenWithCredentials(tenantID, token string) (*PortalDB, error) {
+	host := os.Getenv("NEXUS_HOST")
+	if host == "" {
+		host = "localhost"
+	}
+	port := os.Getenv("NEXUS_PORT")
+	if port == "" {
+		port = "5433"
+	}
+	database := os.Getenv("NEXUS_DATABASE")
+	if database == "" {
+		database = "lake"
+	}
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		host, port, tenantID, token, database)
+	sqlDB, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open per-request database connection: %w", err)
+	}
+	sqlDB.SetMaxOpenConns(1)
+	return WrapDB(sqlDB), nil
+}
+
 // Open creates and returns a PortalDB connection to the Nexus gateway.
 // The connection DSN is read from the DATABASE_URL environment variable.
 // If DATABASE_URL is not set, individual NEXUS_HOST, NEXUS_PORT, NEXUS_USER,
