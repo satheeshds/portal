@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/satheeshds/portal/db"
 	"github.com/satheeshds/portal/models"
 )
 
@@ -22,8 +23,8 @@ func scanAccount(scanner interface{ Scan(...any) error }) (models.Account, error
 	return a, err
 }
 
-func getAccountByID(id int) (models.Account, error) {
-	return scanAccount(DB.QueryRow(accountSelectQuery+" WHERE accounts.id = ?", id))
+func getAccountByID(d *db.PortalDB, id int) (models.Account, error) {
+	return scanAccount(d.QueryRow(accountSelectQuery+" WHERE accounts.id = ?", id))
 }
 
 // ListAccounts lists all accounts
@@ -36,6 +37,7 @@ func getAccountByID(id int) (models.Account, error) {
 // @Router       /accounts [get]
 // @Security     BasicAuth
 func ListAccounts(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	search := r.URL.Query().Get("search")
 	query := accountSelectQuery
 	var args []any
@@ -44,7 +46,7 @@ func ListAccounts(w http.ResponseWriter, r *http.Request) {
 		args = append(args, "%"+search+"%")
 	}
 	query += " ORDER BY name"
-	rows, err := DB.Query(query, args...)
+	rows, err := d.Query(query, args...)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -77,9 +79,10 @@ func ListAccounts(w http.ResponseWriter, r *http.Request) {
 // @Router       /accounts/{id} [get]
 // @Security     BasicAuth
 func GetAccount(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	var a models.Account
-	err := DB.QueryRow(accountSelectQuery+" WHERE id = ?", id).
+	err := d.QueryRow(accountSelectQuery+" WHERE id = ?", id).
 		Scan(&a.ID, &a.Name, &a.Type, &a.OpeningBalance, &a.CreatedAt, &a.UpdatedAt, &a.Balance)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "account not found")
@@ -100,6 +103,7 @@ func GetAccount(w http.ResponseWriter, r *http.Request) {
 // @Router       /accounts [post]
 // @Security     BasicAuth
 func CreateAccount(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	var input models.AccountInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON")
@@ -111,14 +115,14 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var id int
-	err := DB.QueryRow("INSERT INTO accounts (name, type, opening_balance) VALUES (?, ?, ?) RETURNING id",
+	err := d.QueryRow("INSERT INTO accounts (name, type, opening_balance) VALUES (?, ?, ?) RETURNING id",
 		input.Name, input.Type, input.OpeningBalance).Scan(&id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	a, err := scanAccount(DB.QueryRow(accountSelectQuery+" WHERE accounts.id = ?", id))
+	a, err := scanAccount(d.QueryRow(accountSelectQuery+" WHERE accounts.id = ?", id))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to re-fetch created account: "+err.Error())
 		return
@@ -140,6 +144,7 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 // @Router       /accounts/{id} [put]
 // @Security     BasicAuth
 func UpdateAccount(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	var input models.AccountInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -151,7 +156,7 @@ func UpdateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := DB.Exec("UPDATE accounts SET name = ?, type = ?, opening_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+	res, err := d.Exec("UPDATE accounts SET name = ?, type = ?, opening_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
 		input.Name, input.Type, input.OpeningBalance, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -162,7 +167,7 @@ func UpdateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a, err := scanAccount(DB.QueryRow(accountSelectQuery+" WHERE accounts.id = ?", id))
+	a, err := scanAccount(d.QueryRow(accountSelectQuery+" WHERE accounts.id = ?", id))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to re-fetch updated account: "+err.Error())
 		return
@@ -181,8 +186,9 @@ func UpdateAccount(w http.ResponseWriter, r *http.Request) {
 // @Router       /accounts/{id} [delete]
 // @Security     BasicAuth
 func DeleteAccount(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	res, err := DB.Exec("DELETE FROM accounts WHERE id = ?", id)
+	res, err := d.Exec("DELETE FROM accounts WHERE id = ?", id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

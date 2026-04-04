@@ -31,8 +31,8 @@ func scanBill(scanner interface{ Scan(...any) error }) (models.Bill, error) {
 	return b, err
 }
 
-func loadBillItems(billID int) ([]models.BillItem, error) {
-	rows, err := DB.Query(`SELECT id, bill_id, description, quantity, unit, unit_price, amount, created_at, updated_at
+func loadBillItems(d *db.PortalDB, billID int) ([]models.BillItem, error) {
+	rows, err := d.Query(`SELECT id, bill_id, description, quantity, unit, unit_price, amount, created_at, updated_at
 		FROM bill_items WHERE bill_id = ? ORDER BY id ASC`, billID)
 	if err != nil {
 		return nil, err
@@ -57,12 +57,12 @@ func loadBillItems(billID int) ([]models.BillItem, error) {
 	return items, nil
 }
 
-func getBillByID(id int) (models.Bill, error) {
-	b, err := scanBill(DB.QueryRow(billSelectQuery+" WHERE b.id = ?", id))
+func getBillByID(d *db.PortalDB, id int) (models.Bill, error) {
+	b, err := scanBill(d.QueryRow(billSelectQuery+" WHERE b.id = ?", id))
 	if err != nil {
 		return b, err
 	}
-	b.Items, err = loadBillItems(id)
+	b.Items, err = loadBillItems(d, id)
 	return b, err
 }
 
@@ -93,6 +93,7 @@ func insertBillItems(tx *db.PortalTx, billID int, items []models.BillItemInput) 
 // @Router       /bills [get]
 // @Security     BasicAuth
 func ListBills(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	query := billSelectQuery
 	var conditions []string
 	var args []any
@@ -124,7 +125,7 @@ func ListBills(w http.ResponseWriter, r *http.Request) {
 	}
 	query += " ORDER BY b.created_at DESC"
 
-	rows, err := DB.Query(query, args...)
+	rows, err := d.Query(query, args...)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -158,8 +159,9 @@ func ListBills(w http.ResponseWriter, r *http.Request) {
 // @Router       /bills/{id} [get]
 // @Security     BasicAuth
 func GetBill(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	b, err := getBillByID(id)
+	b, err := getBillByID(d, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "bill not found")
@@ -183,6 +185,7 @@ func GetBill(w http.ResponseWriter, r *http.Request) {
 // @Router       /bills [post]
 // @Security     BasicAuth
 func CreateBill(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	var input models.BillInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON")
@@ -193,7 +196,7 @@ func CreateBill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := DB.Begin()
+	tx, err := d.Begin()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -222,7 +225,7 @@ func CreateBill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, err := getBillByID(id)
+	b, err := getBillByID(d, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to re-fetch created bill: "+err.Error())
 		return
@@ -244,6 +247,7 @@ func CreateBill(w http.ResponseWriter, r *http.Request) {
 // @Router       /bills/{id} [put]
 // @Security     BasicAuth
 func UpdateBill(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	var input models.BillInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -255,7 +259,7 @@ func UpdateBill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := DB.Begin()
+	tx, err := d.Begin()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -293,7 +297,7 @@ func UpdateBill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, err := getBillByID(id)
+	b, err := getBillByID(d, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to re-fetch updated bill: "+err.Error())
 		return
@@ -312,9 +316,10 @@ func UpdateBill(w http.ResponseWriter, r *http.Request) {
 // @Router       /bills/{id} [delete]
 // @Security     BasicAuth
 func DeleteBill(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
-	tx, err := DB.Begin()
+	tx, err := d.Begin()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -363,8 +368,9 @@ func DeleteBill(w http.ResponseWriter, r *http.Request) {
 // @Router       /bills/{id}/links [get]
 // @Security     BasicAuth
 func GetBillLinks(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	rows, err := DB.Query(`SELECT td.id, td.transaction_id, td.document_type, td.document_id, td.amount, td.created_at,
+	rows, err := d.Query(`SELECT td.id, td.transaction_id, td.document_type, td.document_id, td.amount, td.created_at,
 		COALESCE(t.transaction_date, ''), COALESCE(t.description, ''), COALESCE(t.reference, ''), a.name as account_name
 		FROM transaction_documents td
 		JOIN transactions t ON td.transaction_id = t.id
@@ -412,11 +418,12 @@ type BillLink struct {
 // @Router       /bills/{id}/items [get]
 // @Security     BasicAuth
 func ListBillItems(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
 	// Verify bill exists.
 	var exists bool
-	err := DB.QueryRow("SELECT COUNT(*) > 0 FROM bills WHERE id = ?", id).Scan(&exists)
+	err := d.QueryRow("SELECT COUNT(*) > 0 FROM bills WHERE id = ?", id).Scan(&exists)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -426,7 +433,7 @@ func ListBillItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, err := loadBillItems(id)
+	items, err := loadBillItems(d, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -448,11 +455,12 @@ func ListBillItems(w http.ResponseWriter, r *http.Request) {
 // @Router       /bills/{id}/items [post]
 // @Security     BasicAuth
 func CreateBillItem(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	billID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
 	// Verify bill exists.
 	var exists bool
-	err := DB.QueryRow("SELECT COUNT(*) > 0 FROM bills WHERE id = ?", billID).Scan(&exists)
+	err := d.QueryRow("SELECT COUNT(*) > 0 FROM bills WHERE id = ?", billID).Scan(&exists)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to verify bill existence: "+err.Error())
 		return
@@ -473,7 +481,7 @@ func CreateBillItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var itemID int
-	err = DB.QueryRow(`INSERT INTO bill_items (bill_id, description, quantity, unit, unit_price, amount)
+	err = d.QueryRow(`INSERT INTO bill_items (bill_id, description, quantity, unit, unit_price, amount)
 		VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
 		billID, input.Description, input.Quantity, input.Unit, input.UnitPrice, input.Amount).Scan(&itemID)
 	if err != nil {
@@ -482,7 +490,7 @@ func CreateBillItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var item models.BillItem
-	err = DB.QueryRow(`SELECT id, bill_id, description, quantity, unit, unit_price, amount, created_at, updated_at
+	err = d.QueryRow(`SELECT id, bill_id, description, quantity, unit, unit_price, amount, created_at, updated_at
 		FROM bill_items WHERE id = ?`, itemID).Scan(
 		&item.ID, &item.BillID, &item.Description, &item.Quantity,
 		&item.Unit, &item.UnitPrice, &item.Amount, &item.CreatedAt, &item.UpdatedAt)
@@ -508,6 +516,7 @@ func CreateBillItem(w http.ResponseWriter, r *http.Request) {
 // @Router       /bills/{id}/items/{itemId} [put]
 // @Security     BasicAuth
 func UpdateBillItem(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	billID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	itemID, _ := strconv.Atoi(chi.URLParam(r, "itemId"))
 
@@ -521,7 +530,7 @@ func UpdateBillItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := DB.Exec(`UPDATE bill_items SET description = ?, quantity = ?, unit = ?, unit_price = ?, amount = ?,
+	res, err := d.Exec(`UPDATE bill_items SET description = ?, quantity = ?, unit = ?, unit_price = ?, amount = ?,
 		updated_at = CURRENT_TIMESTAMP WHERE id = ? AND bill_id = ?`,
 		input.Description, input.Quantity, input.Unit, input.UnitPrice, input.Amount, itemID, billID)
 	if err != nil {
@@ -534,7 +543,7 @@ func UpdateBillItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var item models.BillItem
-	err = DB.QueryRow(`SELECT id, bill_id, description, quantity, unit, unit_price, amount, created_at, updated_at
+	err = d.QueryRow(`SELECT id, bill_id, description, quantity, unit, unit_price, amount, created_at, updated_at
 		FROM bill_items WHERE id = ?`, itemID).Scan(
 		&item.ID, &item.BillID, &item.Description, &item.Quantity,
 		&item.Unit, &item.UnitPrice, &item.Amount, &item.CreatedAt, &item.UpdatedAt)
@@ -557,10 +566,11 @@ func UpdateBillItem(w http.ResponseWriter, r *http.Request) {
 // @Router       /bills/{id}/items/{itemId} [delete]
 // @Security     BasicAuth
 func DeleteBillItem(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	billID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	itemID, _ := strconv.Atoi(chi.URLParam(r, "itemId"))
 
-	res, err := DB.Exec("DELETE FROM bill_items WHERE id = ? AND bill_id = ?", itemID, billID)
+	res, err := d.Exec("DELETE FROM bill_items WHERE id = ? AND bill_id = ?", itemID, billID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

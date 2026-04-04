@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/satheeshds/portal/db"
 	"github.com/satheeshds/portal/models"
 )
 
@@ -29,8 +30,8 @@ func scanPayout(scanner interface{ Scan(...any) error }) (models.Payout, error) 
 	return p, err
 }
 
-func getPayoutByID(id int) (models.Payout, error) {
-	return scanPayout(DB.QueryRow(payoutSelectQuery+" WHERE id = ?", id))
+func getPayoutByID(d *db.PortalDB, id int) (models.Payout, error) {
+	return scanPayout(d.QueryRow(payoutSelectQuery+" WHERE id = ?", id))
 }
 
 // ListPayouts lists all payouts
@@ -46,6 +47,7 @@ func getPayoutByID(id int) (models.Payout, error) {
 // @Router       /payouts [get]
 // @Security     BasicAuth
 func ListPayouts(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	query := payoutSelectQuery
 	var conditions []string
 	var args []any
@@ -72,7 +74,7 @@ func ListPayouts(w http.ResponseWriter, r *http.Request) {
 	}
 	query += " ORDER BY settlement_date DESC, created_at DESC"
 
-	rows, err := DB.Query(query, args...)
+	rows, err := d.Query(query, args...)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -105,8 +107,9 @@ func ListPayouts(w http.ResponseWriter, r *http.Request) {
 // @Router       /payouts/{id} [get]
 // @Security     BasicAuth
 func GetPayout(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	p, err := getPayoutByID(id)
+	p, err := getPayoutByID(d, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "payout not found")
@@ -128,8 +131,9 @@ func GetPayout(w http.ResponseWriter, r *http.Request) {
 // @Router       /payouts/{id}/links [get]
 // @Security     BasicAuth
 func GetPayoutLinks(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	rows, err := DB.Query(`SELECT td.id, td.transaction_id, td.document_type, td.document_id, td.amount, td.created_at,
+	rows, err := d.Query(`SELECT td.id, td.transaction_id, td.document_type, td.document_id, td.amount, td.created_at,
 		COALESCE(t.transaction_date, ''), COALESCE(t.description, ''), COALESCE(t.reference, ''), a.name as account_name
 		FROM transaction_documents td
 		JOIN transactions t ON td.transaction_id = t.id
@@ -178,6 +182,7 @@ type PayoutLink struct {
 // @Router       /payouts [post]
 // @Security     BasicAuth
 func CreatePayout(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	var input models.PayoutInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON")
@@ -189,7 +194,7 @@ func CreatePayout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var id int
-	err := DB.QueryRow(`INSERT INTO payouts (outlet_name, platform, period_start, period_end, settlement_date,
+	err := d.QueryRow(`INSERT INTO payouts (outlet_name, platform, period_start, period_end, settlement_date,
 		total_orders, gross_sales_amt, restaurant_discount_amt, platform_commission_amt,
 		taxes_tcs_tds_amt, marketing_ads_amt, final_payout_amt, utr_number)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
@@ -201,7 +206,7 @@ func CreatePayout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := getPayoutByID(id)
+	p, err := getPayoutByID(d, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to re-fetch created payout: "+err.Error())
 		return
@@ -223,6 +228,7 @@ func CreatePayout(w http.ResponseWriter, r *http.Request) {
 // @Router       /payouts/{id} [put]
 // @Security     BasicAuth
 func UpdatePayout(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	var input models.PayoutInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -234,7 +240,7 @@ func UpdatePayout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := DB.Exec(`UPDATE payouts SET outlet_name = ?, platform = ?, period_start = ?, period_end = ?,
+	res, err := d.Exec(`UPDATE payouts SET outlet_name = ?, platform = ?, period_start = ?, period_end = ?,
 		settlement_date = ?, total_orders = ?, gross_sales_amt = ?, restaurant_discount_amt = ?,
 		platform_commission_amt = ?, taxes_tcs_tds_amt = ?, marketing_ads_amt = ?, final_payout_amt = ?,
 		utr_number = ? WHERE id = ?`,
@@ -250,7 +256,7 @@ func UpdatePayout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := getPayoutByID(id)
+	p, err := getPayoutByID(d, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to re-fetch updated payout: "+err.Error())
 		return
@@ -269,9 +275,10 @@ func UpdatePayout(w http.ResponseWriter, r *http.Request) {
 // @Router       /payouts/{id} [delete]
 // @Security     BasicAuth
 func DeletePayout(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
-	tx, err := DB.BeginTx(r.Context(), nil)
+	tx, err := d.BeginTx(r.Context(), nil)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

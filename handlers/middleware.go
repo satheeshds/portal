@@ -3,6 +3,8 @@ package handlers
 import (
 	"bufio"
 	"bytes"
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +12,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/satheeshds/portal/db"
 )
@@ -26,6 +30,44 @@ type Response struct {
 // DB is the shared database connection used by all handlers.
 var DB *db.PortalDB
 
+type contextKey int
+
+const dbKey contextKey = 0
+
+// withDB stores a per-request PortalDB in the context.
+func withDB(ctx context.Context, d *db.PortalDB) context.Context {
+	return context.WithValue(ctx, dbKey, d)
+}
+
+// getDB returns the per-request PortalDB from the context, falling back to the
+// global DB so that tests that set the global variable continue to work.
+func getDB(r *http.Request) *db.PortalDB {
+	if d, ok := r.Context().Value(dbKey).(*db.PortalDB); ok && d != nil {
+		return d
+	}
+	return DB
+}
+
+// extractTenantID parses the JWT payload (second dot-separated part) and returns
+// the tenant_id claim value, or ("", false) if it cannot be extracted.
+func extractTenantID(token string) (string, bool) {
+	parts := strings.SplitN(token, ".", 3)
+	if len(parts) != 3 {
+		return "", false
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "", false
+	}
+	var claims struct {
+		TenantID string `json:"tenant_id"`
+	}
+	if err := json.Unmarshal(payload, &claims); err != nil || claims.TenantID == "" {
+		return "", false
+	}
+	return claims.TenantID, true
+}
+
 // writeJSON writes a JSON response with the given status code.
 func writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -41,11 +83,10 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 }
 
 // DBRequired is middleware that returns 503 Service Unavailable when no database
-// connection has been configured. A per-request connection will be injected here
-// once JWT-based authentication is implemented.
+// connection has been configured.
 func DBRequired(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if DB == nil {
+		if getDB(r) == nil {
 			writeError(w, http.StatusServiceUnavailable, "database connection not available")
 			return
 		}
@@ -105,6 +146,19 @@ func BearerAuth(next http.Handler) http.Handler {
 				writeError(w, http.StatusUnauthorized, "unauthorized")
 				return
 			}
+
+			// Open a per-request DB connection using the tenant's credentials when
+			// Nexus DB access is configured.
+			if os.Getenv("NEXUS_HOST") != "" {
+				if tenantID, ok := extractTenantID(token); ok {
+					if reqDB, err := db.OpenWithCredentials(tenantID, token); err == nil {
+						ctx := withDB(r.Context(), reqDB)
+						r = r.WithContext(ctx)
+						defer reqDB.Close()
+					}
+				}
+			}
+
 			next.ServeHTTP(w, r)
 			return
 		}

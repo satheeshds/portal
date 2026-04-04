@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/satheeshds/portal/db"
 	"github.com/satheeshds/portal/models"
 )
 
@@ -32,8 +33,8 @@ func scanRecurringPayment(scanner interface{ Scan(...any) error }) (models.Recur
 	return r, err
 }
 
-func getRecurringPaymentByID(id int) (models.RecurringPayment, error) {
-	return scanRecurringPayment(DB.QueryRow(recurringPaymentSelectQuery+" WHERE r.id = ?", id))
+func getRecurringPaymentByID(d *db.PortalDB, id int) (models.RecurringPayment, error) {
+	return scanRecurringPayment(d.QueryRow(recurringPaymentSelectQuery+" WHERE r.id = ?", id))
 }
 
 // ListRecurringPayments lists all recurring payments
@@ -48,6 +49,7 @@ func getRecurringPaymentByID(id int) (models.RecurringPayment, error) {
 // @Router       /recurring-payments [get]
 // @Security     BasicAuth
 func ListRecurringPayments(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	query := recurringPaymentSelectQuery
 	var conditions []string
 	var args []any
@@ -74,7 +76,7 @@ func ListRecurringPayments(w http.ResponseWriter, r *http.Request) {
 	}
 	query += " ORDER BY r.created_at DESC"
 
-	rows, err := DB.Query(query, args...)
+	rows, err := d.Query(query, args...)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -107,8 +109,9 @@ func ListRecurringPayments(w http.ResponseWriter, r *http.Request) {
 // @Router       /recurring-payments/{id} [get]
 // @Security     BasicAuth
 func GetRecurringPayment(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	p, err := getRecurringPaymentByID(id)
+	p, err := getRecurringPaymentByID(d, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "recurring payment not found")
@@ -132,6 +135,7 @@ func GetRecurringPayment(w http.ResponseWriter, r *http.Request) {
 // @Router       /recurring-payments [post]
 // @Security     BasicAuth
 func CreateRecurringPayment(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	var input models.RecurringPaymentInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON")
@@ -143,7 +147,7 @@ func CreateRecurringPayment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var id int
-	err := DB.QueryRow(`INSERT INTO recurring_payments
+	err := d.QueryRow(`INSERT INTO recurring_payments
 		(name, type, amount, account_id, contact_id, frequency, interval, start_date, end_date, next_due_date, status, description, reference)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
 		input.Name, input.Type, input.Amount, input.AccountID, input.ContactID,
@@ -154,7 +158,7 @@ func CreateRecurringPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := getRecurringPaymentByID(id)
+	p, err := getRecurringPaymentByID(d, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to re-fetch created recurring payment: "+err.Error())
 		return
@@ -176,6 +180,7 @@ func CreateRecurringPayment(w http.ResponseWriter, r *http.Request) {
 // @Router       /recurring-payments/{id} [put]
 // @Security     BasicAuth
 func UpdateRecurringPayment(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	var input models.RecurringPaymentInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -187,7 +192,7 @@ func UpdateRecurringPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := DB.Exec(`UPDATE recurring_payments SET
+	res, err := d.Exec(`UPDATE recurring_payments SET
 		name = ?, type = ?, amount = ?, account_id = ?, contact_id = ?,
 		frequency = ?, interval = ?, start_date = ?, end_date = ?, next_due_date = ?, last_generated_date = ?,
 		status = ?, description = ?, reference = ?, updated_at = CURRENT_TIMESTAMP
@@ -204,7 +209,7 @@ func UpdateRecurringPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := getRecurringPaymentByID(id)
+	p, err := getRecurringPaymentByID(d, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to re-fetch updated recurring payment: "+err.Error())
 		return
@@ -223,8 +228,9 @@ func UpdateRecurringPayment(w http.ResponseWriter, r *http.Request) {
 // @Router       /recurring-payments/{id} [delete]
 // @Security     BasicAuth
 func DeleteRecurringPayment(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	res, err := DB.Exec("DELETE FROM recurring_payments WHERE id = ?", id)
+	res, err := d.Exec("DELETE FROM recurring_payments WHERE id = ?", id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -246,8 +252,9 @@ func DeleteRecurringPayment(w http.ResponseWriter, r *http.Request) {
 // @Router       /recurring-payments/{id}/links [get]
 // @Security     BasicAuth
 func GetRecurringPaymentLinks(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	rows, err := DB.Query(`
+	rows, err := d.Query(`
 		SELECT td.id, td.transaction_id, td.document_type, td.document_id, td.amount, td.created_at,
 			COALESCE(t.transaction_date, ''), COALESCE(t.description, ''), COALESCE(t.reference, ''), a.name,
 			rpo.due_date, rpo.status
@@ -304,11 +311,12 @@ type RecurringPaymentLink struct {
 // @Router       /recurring-payments/{id}/occurrences [get]
 // @Security     BasicAuth
 func GetRecurringPaymentOccurrences(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	rpID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
 	// Verify the recurring payment exists
 	var exists bool
-	if err := DB.QueryRow("SELECT COUNT(*) > 0 FROM recurring_payments WHERE id = ?", rpID).Scan(&exists); err != nil {
+	if err := d.QueryRow("SELECT COUNT(*) > 0 FROM recurring_payments WHERE id = ?", rpID).Scan(&exists); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -336,7 +344,7 @@ func GetRecurringPaymentOccurrences(w http.ResponseWriter, r *http.Request) {
 	query += " GROUP BY o.id, o.recurring_payment_id, o.due_date, o.amount, o.status, o.created_at, o.updated_at, r.name"
 	query += " ORDER BY o.due_date DESC"
 
-	rows, err := DB.Query(query, args...)
+	rows, err := d.Query(query, args...)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
