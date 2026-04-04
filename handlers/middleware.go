@@ -154,16 +154,22 @@ func BearerAuth(next http.Handler) http.Handler {
 			// Note: the DSN embeds the JWT token; avoid logging it in error paths.
 			var reqDB *db.PortalDB
 			if os.Getenv("NEXUS_HOST") != "" {
-				if tenantID, ok := extractTenantID(token); ok {
-					opened, err := db.OpenWithCredentials(tenantID, token)
-					if err != nil {
-						slog.WarnContext(r.Context(), "failed to open per-request DB connection",
-							"tenant_id", tenantID, "error", err)
-					} else {
-						reqDB = opened
-						r = r.WithContext(withDB(r.Context(), reqDB))
-					}
+				tenantID, ok := extractTenantID(token)
+				if !ok {
+					writeError(w, http.StatusUnauthorized, "unauthorized")
+					return
 				}
+
+				opened, err := db.OpenWithCredentials(tenantID, token)
+				if err != nil {
+					slog.WarnContext(r.Context(), "failed to open per-request DB connection",
+						"tenant_id", tenantID, "error", err)
+					writeError(w, http.StatusServiceUnavailable, "service unavailable")
+					return
+				}
+
+				reqDB = opened
+				r = r.WithContext(withDB(r.Context(), reqDB))
 			}
 
 			next.ServeHTTP(w, r)
