@@ -10,11 +10,12 @@ import (
 	"os"
 	"strings"
 	"time"
+	"context"
 )
 
-// nexusClient is a shared HTTP client with a reasonable timeout so that a slow
-// or unreachable Nexus gateway never hangs portal requests indefinitely.
-var nexusClient = &http.Client{Timeout: 15 * time.Second}
+// nexusClient is a shared HTTP client. Timeouts are managed at the request level via context
+// to allow different limits for registration (5 min) and login (30 sec).
+var nexusClient = &http.Client{}
 
 // nexusControlURL returns the configured Nexus gateway base URL, trimming any trailing slash.
 func nexusControlURL() string {
@@ -48,7 +49,10 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	target := fmt.Sprintf("%s/api/v1/register", base)
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, target, bytes.NewReader(body))
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(body))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create register request")
 		return
@@ -92,7 +96,10 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	target := fmt.Sprintf("%s/api/v1/login", base)
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, target, bytes.NewReader(body))
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(body))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create login request")
 		return

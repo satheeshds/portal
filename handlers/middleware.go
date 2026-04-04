@@ -117,24 +117,24 @@ func BasicAuth(next http.Handler) http.Handler {
 }
 
 // BearerAuth is middleware that enforces Bearer token authentication.
-// When NEXUS_URL is set it validates the token against the Nexus gateway;
+// When NEXUS_CONTROL_URL is set it validates the token against the Nexus gateway;
 // otherwise it simply requires a non-empty Bearer token to be present.
-// If neither NEXUS_URL nor AUTH_USER/AUTH_PASS are configured the middleware
+// If neither NEXUS_CONTROL_URL nor AUTH_USER/AUTH_PASS are configured the middleware
 // falls back to the unauthenticated (open) behaviour and logs a warning.
 func BearerAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		nexus := os.Getenv("NEXUS_URL")
+		nexus := os.Getenv("NEXUS_CONTROL_URL")
 		authUser := os.Getenv("AUTH_USER")
 		authPass := os.Getenv("AUTH_PASS")
 
 		// If nothing is configured, warn and pass through (same as original BasicAuth).
 		if nexus == "" && authUser == "" && authPass == "" {
-			slog.Warn("no auth configured (NEXUS_URL, AUTH_USER, AUTH_PASS), API is unauthenticated")
+			slog.Warn("no auth configured (NEXUS_CONTROL_URL, AUTH_USER, AUTH_PASS), API is unauthenticated")
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		// Prefer Bearer token when NEXUS_URL is configured.
+		// Prefer Bearer token when NEXUS_CONTROL_URL is configured.
 		if nexus != "" {
 			authHeader := r.Header.Get("Authorization")
 			if len(authHeader) < 8 || authHeader[:7] != "Bearer " {
