@@ -30,6 +30,7 @@
 
 /* ===== Reset & Base ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+.hidden { display: none !important; }
 html { font-size: 14px; }
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -422,7 +423,85 @@ textarea.form-control {
 }
 .alloc-bar-fill.full { background: var(--success); }
 
-/* ===== Animations ===== */
+/* ===== Auth Overlay ===== */
+.auth-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    animation: fadeIn 0.2s ease;
+}
+.auth-overlay.hidden { display: none; }
+.auth-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: var(--shadow);
+    animation: slideUp 0.25s ease;
+}
+.auth-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.75rem;
+    justify-content: center;
+}
+.auth-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+    text-align: center;
+    color: var(--text-primary);
+}
+.auth-error {
+    background: var(--danger-subtle);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: var(--radius-sm);
+    padding: 0.6rem 0.85rem;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+.auth-error.auth-success {
+    background: var(--success-subtle);
+    color: var(--success);
+    border-color: rgba(34, 197, 94, 0.25);
+}
+.auth-error.hidden { display: none; }
+.auth-switch {
+    margin-top: 1.25rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+.auth-switch a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+}
+.auth-switch a:hover { color: var(--accent-hover); }
+.btn-full { width: 100%; justify-content: center; }
+
+/* ===== Sidebar Footer ===== */
+.sidebar-footer {
+    padding: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+.logout-btn {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.6rem;
+    color: var(--text-secondary);
+}
+.logout-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }

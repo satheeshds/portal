@@ -9,11 +9,9 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/satheeshds/portal/db"
 	_ "github.com/satheeshds/portal/docs"
 	"github.com/satheeshds/portal/handlers"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -27,7 +25,9 @@ var staticFiles embed.FS
 // @description     API for managing accounts, contacts, bills, invoices, and transactions.
 // @host            localhost:8080
 // @BasePath        /api/v1
-// @securityDefinitions.basic  BasicAuth
+// @securityDefinitions.apikey  BearerAuth
+// @in                          header
+// @name                        Authorization
 
 func main() {
 	// Configure structured logging
@@ -37,56 +37,20 @@ func main() {
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level})))
 
-	// Open database
-	database, err := db.Open()
-	if err != nil {
-		slog.Error("failed to open database", "error", err)
-		os.Exit(1)
-	}
-	defer database.Close()
-
-	// Run migrations
-	if err := db.Migrate(database); err != nil {
-		slog.Error("failed to run migrations", "error", err)
-		os.Exit(1)
-	}
-
-	// Set shared DB for handlers
-	handlers.DB = database
-
-	// Generate recurring payment occurrences for all due dates up to today.
-	// This also covers gap recovery: if the server was offline for weeks/months, all missed
-	// occurrences are created as "pending" so they can be reconciled with bank transactions.
-	if err := db.GenerateOccurrences(database); err != nil {
-		slog.Warn("occurrence generation failed on startup", "error", err)
-	}
-
-	// Daily background job: generate new occurrences as their due dates arrive.
-	// Runs once per day at approximately midnight so the server doesn't need to be restarted
-	// to pick up newly due occurrences.
-	go func() {
-		for {
-			now := time.Now()
-			next := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
-			time.Sleep(time.Until(next))
-			if err := db.GenerateOccurrences(database); err != nil {
-				slog.Warn("daily occurrence generation failed", "error", err)
-			}
-		}
-	}()
-
 	// Router setup
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(handlers.RequestLogger)
 	r.Use(middleware.Recoverer)
 
-	// Public routes (no authentication required)
-	r.Post("/api/v1/register", handlers.Register)
+	// Public auth routes (proxy to Nexus gateway)
+	r.Post("/api/auth/register", handlers.Register)
+	r.Post("/api/auth/login", handlers.Login)
 
-	// API routes with basic auth
+	// API routes with bearer token / basic auth
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Use(handlers.BasicAuth)
+		r.Use(handlers.BearerAuth)
+		r.Use(handlers.DBRequired)
 
 		// Accounts
 		r.Get("/accounts", handlers.ListAccounts)

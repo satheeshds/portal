@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/satheeshds/portal/db"
 	"github.com/satheeshds/portal/models"
 )
 
@@ -33,8 +34,8 @@ func scanTransaction(scanner interface{ Scan(...any) error }) (models.Transactio
 	return t, err
 }
 
-func getTransactionByID(id int) (models.Transaction, error) {
-	return scanTransaction(DB.QueryRow(txnSelectQuery+" WHERE t.id = ?", id))
+func getTransactionByID(d *db.PortalDB, id int) (models.Transaction, error) {
+	return scanTransaction(d.QueryRow(txnSelectQuery+" WHERE t.id = ?", id))
 }
 
 // ListTransactions lists all transactions
@@ -48,6 +49,7 @@ func getTransactionByID(id int) (models.Transaction, error) {
 // @Router       /transactions [get]
 // @Security     BasicAuth
 func ListTransactions(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	query := txnSelectQuery
 	var conditions []string
 	var args []any
@@ -73,7 +75,7 @@ func ListTransactions(w http.ResponseWriter, r *http.Request) {
 	}
 	query += " ORDER BY t.created_at DESC"
 
-	rows, err := DB.Query(query, args...)
+	rows, err := d.Query(query, args...)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -106,8 +108,9 @@ func ListTransactions(w http.ResponseWriter, r *http.Request) {
 // @Router       /transactions/{id} [get]
 // @Security     BasicAuth
 func GetTransaction(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	t, err := getTransactionByID(id)
+	t, err := getTransactionByID(d, id)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "transaction not found")
 		return
@@ -126,6 +129,7 @@ func GetTransaction(w http.ResponseWriter, r *http.Request) {
 // @Router       /transactions [post]
 // @Security     BasicAuth
 func CreateTransaction(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	var input models.TransactionInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON")
@@ -138,7 +142,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request) {
 
 	// For transfers, create paired records in a transaction
 	if input.Type == "transfer" {
-		tx, err := DB.Begin()
+		tx, err := d.Begin()
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -181,7 +185,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		t, err := getTransactionByID(id1)
+		t, err := getTransactionByID(d, id1)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to re-fetch created transfer transaction: "+err.Error())
 			return
@@ -192,7 +196,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request) {
 
 	// Normal income/expense
 	var id int
-	err := DB.QueryRow(`INSERT INTO transactions (account_id, type, amount, transaction_date, description, reference, transfer_account_id, contact_id)
+	err := d.QueryRow(`INSERT INTO transactions (account_id, type, amount, transaction_date, description, reference, transfer_account_id, contact_id)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
 		input.AccountID, input.Type, input.Amount, input.TransactionDate,
 		input.Description, input.Reference, input.TransferAccountID, input.ContactID).Scan(&id)
@@ -201,7 +205,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	txn, err := getTransactionByID(id)
+	txn, err := getTransactionByID(d, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to re-fetch created transaction: "+err.Error())
 		return
@@ -222,6 +226,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request) {
 // @Router       /transactions/{id} [put]
 // @Security     BasicAuth
 func UpdateTransaction(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	var input models.TransactionInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -233,7 +238,7 @@ func UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := DB.Exec(`UPDATE transactions SET account_id = ?, type = ?, amount = ?, transaction_date = ?,
+	res, err := d.Exec(`UPDATE transactions SET account_id = ?, type = ?, amount = ?, transaction_date = ?,
 		description = ?, reference = ?, transfer_account_id = ?, contact_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
 		input.AccountID, input.Type, input.Amount, input.TransactionDate,
 		input.Description, input.Reference, input.TransferAccountID, input.ContactID, id)
@@ -246,7 +251,7 @@ func UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t, err := getTransactionByID(id)
+	t, err := getTransactionByID(d, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to re-fetch updated transaction: "+err.Error())
 		return
@@ -265,10 +270,11 @@ func UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 // @Router       /transactions/{id} [delete]
 // @Security     BasicAuth
 func DeleteTransaction(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
 	// Start a DB transaction to ensure atomicity of the delete and related updates.
-	tx, err := DB.Begin()
+	tx, err := d.Begin()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -336,7 +342,7 @@ func DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 
 	// Update document statuses now that the allocation has been removed.
 	for _, dr := range affected {
-		updateDocumentStatus(dr.docType, dr.docID)
+		updateDocumentStatus(d, dr.docType, dr.docID)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "deleted"})
@@ -354,8 +360,9 @@ func DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 // @Router       /transactions/{id}/links [get]
 // @Security     BasicAuth
 func ListTransactionLinks(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	rows, err := DB.Query(`SELECT id, transaction_id, document_type, document_id, amount, created_at
+	rows, err := d.Query(`SELECT id, transaction_id, document_type, document_id, amount, created_at
 		FROM transaction_documents WHERE transaction_id = ? ORDER BY created_at`, txnID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -390,6 +397,7 @@ func ListTransactionLinks(w http.ResponseWriter, r *http.Request) {
 // @Router       /transactions/{id}/links [post]
 // @Security     BasicAuth
 func CreateTransactionLink(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
 	var input models.TransactionDocumentInput
@@ -404,7 +412,7 @@ func CreateTransactionLink(w http.ResponseWriter, r *http.Request) {
 
 	// Check transaction exists and get its amount
 	var txnAmount models.Money
-	err := DB.QueryRow("SELECT amount FROM transactions WHERE id = ?", txnID).Scan(&txnAmount)
+	err := d.QueryRow("SELECT amount FROM transactions WHERE id = ?", txnID).Scan(&txnAmount)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "transaction not found")
 		return
@@ -412,7 +420,7 @@ func CreateTransactionLink(w http.ResponseWriter, r *http.Request) {
 
 	// Check transaction unallocated balance
 	var txnAllocated models.Money
-	DB.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM transaction_documents WHERE transaction_id = ?", txnID).Scan(&txnAllocated)
+	d.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM transaction_documents WHERE transaction_id = ?", txnID).Scan(&txnAllocated)
 	txnUnallocated := models.Money(int64(txnAmount) - int64(txnAllocated))
 	if input.Amount > txnUnallocated {
 		writeError(w, http.StatusBadRequest, fmt.Sprintf("transaction only has %d paise unallocated (requested %d)", txnUnallocated, input.Amount))
@@ -440,7 +448,7 @@ func CreateTransactionLink(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid document type")
 		return
 	}
-	err = DB.QueryRow(fmt.Sprintf("SELECT %s FROM %s WHERE id = ?", amountField, docTable), input.DocumentID).Scan(&docAmount)
+	err = d.QueryRow(fmt.Sprintf("SELECT %s FROM %s WHERE id = ?", amountField, docTable), input.DocumentID).Scan(&docAmount)
 	if err != nil {
 		writeError(w, http.StatusNotFound, fmt.Sprintf("%s not found", input.DocumentType))
 		return
@@ -448,7 +456,7 @@ func CreateTransactionLink(w http.ResponseWriter, r *http.Request) {
 
 	// Check document unallocated balance
 	var docAllocated models.Money
-	DB.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM transaction_documents WHERE document_type = ? AND document_id = ?",
+	d.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM transaction_documents WHERE document_type = ? AND document_id = ?",
 		input.DocumentType, input.DocumentID).Scan(&docAllocated)
 	docUnallocated := models.Money(int64(docAmount) - int64(docAllocated))
 	if input.Amount > docUnallocated {
@@ -458,7 +466,7 @@ func CreateTransactionLink(w http.ResponseWriter, r *http.Request) {
 
 	// Create the link
 	var id int
-	err = DB.QueryRow(`INSERT INTO transaction_documents (transaction_id, document_type, document_id, amount)
+	err = d.QueryRow(`INSERT INTO transaction_documents (transaction_id, document_type, document_id, amount)
 		VALUES (?, ?, ?, ?) RETURNING id`, txnID, input.DocumentType, input.DocumentID, input.Amount).Scan(&id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -466,10 +474,10 @@ func CreateTransactionLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Handle automated status updates
-	updateDocumentStatus(input.DocumentType, input.DocumentID)
+	updateDocumentStatus(d, input.DocumentType, input.DocumentID)
 
 	var td models.TransactionDocument
-	DB.QueryRow("SELECT id, transaction_id, document_type, document_id, amount, created_at FROM transaction_documents WHERE id = ?", id).
+	d.QueryRow("SELECT id, transaction_id, document_type, document_id, amount, created_at FROM transaction_documents WHERE id = ?", id).
 		Scan(&td.ID, &td.TransactionID, &td.DocumentType, &td.DocumentID, &td.Amount, &td.CreatedAt)
 	writeJSON(w, http.StatusCreated, td)
 }
@@ -485,6 +493,7 @@ func CreateTransactionLink(w http.ResponseWriter, r *http.Request) {
 // @Router       /transactions/{id}/links/{linkId} [delete]
 // @Security     BasicAuth
 func DeleteTransactionLink(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	linkID, _ := strconv.Atoi(chi.URLParam(r, "linkId"))
 
@@ -493,9 +502,9 @@ func DeleteTransactionLink(w http.ResponseWriter, r *http.Request) {
 	// Let's find it first.
 	var docType string
 	var docID int
-	DB.QueryRow("SELECT document_type, document_id FROM transaction_documents WHERE id = ?", linkID).Scan(&docType, &docID)
+	d.QueryRow("SELECT document_type, document_id FROM transaction_documents WHERE id = ?", linkID).Scan(&docType, &docID)
 
-	res, err := DB.Exec("DELETE FROM transaction_documents WHERE id = ? AND transaction_id = ?", linkID, txnID)
+	res, err := d.Exec("DELETE FROM transaction_documents WHERE id = ? AND transaction_id = ?", linkID, txnID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -506,12 +515,12 @@ func DeleteTransactionLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if docType != "" {
-		updateDocumentStatus(docType, docID)
+		updateDocumentStatus(d, docType, docID)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "deleted"})
 }
-func updateDocumentStatus(docType string, docID int) {
+func updateDocumentStatus(d *db.PortalDB, docType string, docID int) {
 	var total, allocated models.Money
 	var table, fullStatus, amountField string
 	switch docType {
@@ -541,7 +550,7 @@ func updateDocumentStatus(docType string, docID int) {
 		return
 	}
 
-	err := DB.QueryRow(fmt.Sprintf("SELECT %s, (SELECT COALESCE(SUM(amount), 0) FROM transaction_documents WHERE document_type = ? AND document_id = ?) FROM %s WHERE id = ?", amountField, table),
+	err := d.QueryRow(fmt.Sprintf("SELECT %s, (SELECT COALESCE(SUM(amount), 0) FROM transaction_documents WHERE document_type = ? AND document_id = ?) FROM %s WHERE id = ?", amountField, table),
 		docType, docID, docID).Scan(&total, &allocated)
 	if err != nil {
 		return
@@ -566,5 +575,5 @@ func updateDocumentStatus(docType string, docID int) {
 		}
 	}
 
-	DB.Exec(fmt.Sprintf("UPDATE %s SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", table), newStatus, docID)
+	d.Exec(fmt.Sprintf("UPDATE %s SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", table), newStatus, docID)
 }

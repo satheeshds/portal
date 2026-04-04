@@ -1,11 +1,37 @@
+// ===== Auth State =====
+const AUTH_TOKEN_KEY = 'portal_auth_token';
+
+function getToken() {
+    return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+function setToken(token) {
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+function clearToken() {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+}
+
+function isAuthenticated() {
+    return !!getToken();
+}
+
 // ===== API Client =====
 const API = '/api/v1';
 
 async function api(path, options = {}) {
+    const token = getToken();
+    const authHeaders = token ? { 'Authorization': 'Bearer ' + token } : {};
     const res = await fetch(API + path, {
-        headers: { 'Content-Type': 'application/json', ...options.headers },
+        headers: { 'Content-Type': 'application/json', ...authHeaders, ...options.headers },
         ...options,
     });
+    if (res.status === 401) {
+        clearToken();
+        showAuthOverlay();
+        throw new Error('Session expired. Please sign in again.');
+    }
     const json = await res.json();
     if (json.error) throw new Error(json.error);
     return json.data;
@@ -1357,6 +1383,110 @@ async function showRecurringPaymentSuggestions(id) {
     `);
 }
 
+// ===== Auth UI =====
+function showAuthOverlay() {
+    document.getElementById('auth-overlay').classList.remove('hidden');
+    document.getElementById('app').style.display = 'none';
+    showAuthView('login');
+}
+
+function hideAuthOverlay() {
+    document.getElementById('auth-overlay').classList.add('hidden');
+    document.getElementById('app').style.display = '';
+}
+
+function showAuthView(view) {
+    document.getElementById('auth-login-view').classList.toggle('hidden', view !== 'login');
+    document.getElementById('auth-register-view').classList.toggle('hidden', view !== 'register');
+    const authErr = document.getElementById('auth-error');
+    authErr.classList.add('hidden');
+    authErr.classList.remove('auth-success');
+    document.getElementById('register-error').classList.add('hidden');
+}
+
+async function handleLogin(event) {
+    event.preventDefault();
+    const errEl = document.getElementById('auth-error');
+    errEl.classList.add('hidden');
+    errEl.classList.remove('auth-success');
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: document.getElementById('login-email').value,
+                password: document.getElementById('login-password').value,
+            }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+            throw new Error(json.error || 'Login failed');
+        }
+        const token = json.data?.token || json.token;
+        if (!token) throw new Error('No token received from server');
+        setToken(token);
+        hideAuthOverlay();
+        const { section, params } = getSection();
+        renderSection(section, params);
+    } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+    }
+}
+
+async function handleRegister(event) {
+    event.preventDefault();
+    const errEl = document.getElementById('register-error');
+    errEl.classList.add('hidden');
+    const btn = document.getElementById('register-btn');
+    btn.disabled = true;
+    btn.textContent = 'Creating account…';
+    try {
+        const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                org_name: document.getElementById('register-org').value,
+                email: document.getElementById('register-email').value,
+                password: document.getElementById('register-password').value,
+            }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+            throw new Error(json.error || 'Registration failed');
+        }
+        // Switch to login after successful registration
+        showAuthView('login');
+        document.getElementById('login-email').value = document.getElementById('register-email').value;
+        // Show a success message in the login view
+        const loginMsg = document.getElementById('auth-error');
+        loginMsg.textContent = 'Account created! Please sign in.';
+        loginMsg.classList.remove('hidden');
+        loginMsg.classList.add('auth-success');
+    } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+    }
+}
+
+function logout() {
+    clearToken();
+    showAuthOverlay();
+}
+
 // ===== Init =====
-const { section, params } = getSection();
-renderSection(section, params);
+if (!isAuthenticated()) {
+    showAuthOverlay();
+} else {
+    const { section, params } = getSection();
+    renderSection(section, params);
+}

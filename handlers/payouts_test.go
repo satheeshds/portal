@@ -21,11 +21,12 @@ func setupTestRouter(t *testing.T) (*chi.Mux, func()) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, fmt.Sprintf("test_portal_%s.db", t.Name()))
 
-	database, err := sql.Open("duckdb", dbPath)
+	rawDB, err := sql.Open("duckdb", dbPath)
 	if err != nil {
 		t.Fatalf("open database: %v", err)
 	}
-	if err := db.Migrate(database); err != nil {
+	database := db.WrapDB(rawDB)
+	if err := db.MigrateDB(database); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 

@@ -41,6 +41,7 @@ func scanContact(scanner interface{ Scan(...any) error }) (models.Contact, error
 // @Router       /contacts [get]
 // @Security     BasicAuth
 func ListContacts(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	query := contactSelectQuery
 	var args []any
 	var conditions []string
@@ -61,7 +62,7 @@ func ListContacts(w http.ResponseWriter, r *http.Request) {
 	}
 	query += " ORDER BY name"
 
-	rows, err := DB.Query(query, args...)
+	rows, err := d.Query(query, args...)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -94,8 +95,9 @@ func ListContacts(w http.ResponseWriter, r *http.Request) {
 // @Router       /contacts/{id} [get]
 // @Security     BasicAuth
 func GetContact(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	c, err := scanContact(DB.QueryRow(contactSelectQuery+" WHERE id = ?", id))
+	c, err := scanContact(d.QueryRow(contactSelectQuery+" WHERE id = ?", id))
 	if err != nil {
 		writeError(w, http.StatusNotFound, "contact not found")
 		return
@@ -115,6 +117,7 @@ func GetContact(w http.ResponseWriter, r *http.Request) {
 // @Router       /contacts [post]
 // @Security     BasicAuth
 func CreateContact(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	var input models.ContactInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON")
@@ -126,14 +129,14 @@ func CreateContact(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var id int
-	err := DB.QueryRow("INSERT INTO contacts (name, type, email, phone) VALUES (?, ?, ?, ?) RETURNING id",
+	err := d.QueryRow("INSERT INTO contacts (name, type, email, phone) VALUES (?, ?, ?, ?) RETURNING id",
 		input.Name, input.Type, input.Email, input.Phone).Scan(&id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c, err := scanContact(DB.QueryRow(contactSelectQuery+" WHERE id = ?", id))
+	c, err := scanContact(d.QueryRow(contactSelectQuery+" WHERE id = ?", id))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to re-fetch created contact: "+err.Error())
 		return
@@ -155,6 +158,7 @@ func CreateContact(w http.ResponseWriter, r *http.Request) {
 // @Router       /contacts/{id} [put]
 // @Security     BasicAuth
 func UpdateContact(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	var input models.ContactInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -166,7 +170,7 @@ func UpdateContact(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := DB.Exec("UPDATE contacts SET name = ?, type = ?, email = ?, phone = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+	res, err := d.Exec("UPDATE contacts SET name = ?, type = ?, email = ?, phone = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
 		input.Name, input.Type, input.Email, input.Phone, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -177,7 +181,7 @@ func UpdateContact(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := scanContact(DB.QueryRow(contactSelectQuery+" WHERE id = ?", id))
+	c, err := scanContact(d.QueryRow(contactSelectQuery+" WHERE id = ?", id))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to re-fetch updated contact: "+err.Error())
 		return
@@ -196,8 +200,9 @@ func UpdateContact(w http.ResponseWriter, r *http.Request) {
 // @Router       /contacts/{id} [delete]
 // @Security     BasicAuth
 func DeleteContact(w http.ResponseWriter, r *http.Request) {
+	d := getDB(r)
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	res, err := DB.Exec("DELETE FROM contacts WHERE id = ?", id)
+	res, err := d.Exec("DELETE FROM contacts WHERE id = ?", id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
