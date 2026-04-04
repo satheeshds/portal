@@ -5,6 +5,7 @@ go 1.24.4
 require (
 	github.com/duckdb/duckdb-go/v2 v2.5.0
 	github.com/go-chi/chi/v5 v5.2.5
+	github.com/lib/pq v1.12.1
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.6
 )

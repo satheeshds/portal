@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/satheeshds/portal/db"
 	"github.com/satheeshds/portal/models"
 )
 
@@ -65,7 +66,7 @@ func getInvoiceByID(id int) (models.Invoice, error) {
 	return inv, err
 }
 
-func insertInvoiceItems(tx *sql.Tx, invoiceID int, items []models.InvoiceItemInput) error {
+func insertInvoiceItems(tx *db.PortalTx, invoiceID int, items []models.InvoiceItemInput) error {
 	stmt, err := tx.Prepare(`INSERT INTO invoice_items (invoice_id, description, quantity, unit, unit_price, amount)
 		VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {

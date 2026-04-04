@@ -1,15 +1,78 @@
 package db
 
 import (
-	"database/sql"
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
+	"os"
+	"time"
 )
 
-// Migrate runs all table creation statements. Safe to call multiple times
-// due to IF NOT EXISTS clauses.
-func Migrate(db *sql.DB) error {
-	slog.Info("running database migrations")
+// Migrate runs all DDL statements through the Nexus control endpoint so they
+// apply to all tenants. The control base URL is read from NEXUS_CONTROL_URL
+// (default: http://nexus-control:8080) and the admin key from ADMIN_API_KEY.
+func Migrate() error {
+	controlURL := os.Getenv("NEXUS_CONTROL_URL")
+	if controlURL == "" {
+		controlURL = "http://nexus-control:8080"
+	}
+	adminKey := os.Getenv("ADMIN_API_KEY")
+	if adminKey == "" {
+		slog.Warn("ADMIN_API_KEY is not set; requests to nexus-control will be unauthenticated")
+	}
+	endpoint := controlURL + "/api/v1/admin/query"
+
+	slog.Info("running database migrations", "endpoint", endpoint)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	for _, stmt := range migrations {
+		if err := execAdminQuery(client, endpoint, adminKey, stmt); err != nil {
+			return fmt.Errorf("migration failed: %w\nstatement: %s", err, stmt)
+		}
+	}
+
+	slog.Info("database migrations complete")
+	return nil
+}
+
+// execAdminQuery posts a single SQL statement to the Nexus control admin endpoint.
+func execAdminQuery(client *http.Client, endpoint, adminKey, query string) error {
+	body, err := json.Marshal(map[string]string{"query": query})
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	if adminKey != "" {
+		req.Header.Set("X-Admin-API-Key", adminKey)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("admin query returned status %d: %s", resp.StatusCode, string(b))
+	}
+	return nil
+}
+
+// MigrateDB runs all DDL statements directly against the provided database.
+// This is intended for use in tests where a live Nexus control endpoint is
+// not available (e.g. an in-process DuckDB instance).
+func MigrateDB(db *PortalDB) error {
+	slog.Info("running database migrations via db connection")
 
 	for _, stmt := range migrations {
 		if _, err := db.Exec(stmt); err != nil {

@@ -1,7 +1,6 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"time"
@@ -14,7 +13,7 @@ import (
 // Gap recovery: if the server was offline for months the loop runs until next_due_date > today,
 // creating one row per missed period. All missed occurrences appear as "pending" and can be matched
 // to the corresponding bank transactions in statement history.
-func GenerateOccurrences(database *sql.DB) error {
+func GenerateOccurrences(database *PortalDB) error {
 	today := time.Now().Format("2006-01-02")
 	slog.Info("generating recurring payment occurrences", "up_to", today)
 

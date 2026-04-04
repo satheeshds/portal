@@ -3,14 +3,42 @@ services:
     build: .
     ports:
       - "8080:80"
-    volumes:
-      - portal_data:/data
     environment:
-      - DB_PATH=/data/portal.db
+      - NEXUS_HOST=nexus-gateway
+      - NEXUS_PORT=5433
+      - NEXUS_USER=portal
+      - NEXUS_PASSWORD=changeme
+      - NEXUS_DATABASE=lake
       - AUTH_USER=admin
       - AUTH_PASS=changeme
       - LOG_LEVEL=info
     restart: unless-stopped
+    depends_on:
+      - nexus-gateway
 
-volumes:
-  portal_data:
+  platform:
+    build:
+      context: .
+      dockerfile: platform/Dockerfile
+    environment:
+      - NEXUS_HOST=nexus-gateway
+      - NEXUS_PORT=5433
+      - NEXUS_CONTROL_URL=http://nexus-control:8080
+      - ADMIN_API_KEY=changeme
+      - LOG_LEVEL=info
+    restart: unless-stopped
+    depends_on:
+      - nexus-gateway
+      - nexus-control
+
+  nexus-gateway:
+    image: satheeshds/nexus-gateway:latest
+    ports:
+      - "5433:5433"
+    restart: unless-stopped
+
+  nexus-control:
+    image: satheeshds/nexus-control:latest
+    ports:
+      - "8081:8080"
+    restart: unless-stopped
