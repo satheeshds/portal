@@ -28,7 +28,7 @@ func nexusURL() string {
 // @Failure      400   {object}  Response
 // @Failure      409   {object}  Response
 // @Failure      502   {object}  Response
-// @Router       /auth/register [post]
+// @Router       /api/auth/register [post]
 func Register(w http.ResponseWriter, r *http.Request) {
 	base := nexusURL()
 	if base == "" {
