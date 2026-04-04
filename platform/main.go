@@ -38,29 +38,23 @@ func main() {
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level})))
 
-	// Run schema migrations via nexus-control admin API (applies to all tenants).
-	if err := db.Migrate(); err != nil {
-		slog.Error("failed to run migrations", "error", err)
-		os.Exit(1)
-	}
-
-	// Generate recurring payment occurrences immediately on startup (gap recovery),
+	// Migrate and generate occurrences for all tenants immediately on startup (gap recovery),
 	// then repeat daily at midnight.
-	if err := generateOccurrencesForAllTenants(); err != nil {
-		slog.Warn("occurrence generation failed on startup", "error", err)
+	if err := migrateAndGenerateForAllTenants(); err != nil {
+		slog.Warn("migration and occurrence generation failed on startup", "error", err)
 	}
 
 	for {
 		now := time.Now()
 		next := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
 		time.Sleep(time.Until(next))
-		if err := generateOccurrencesForAllTenants(); err != nil {
-			slog.Warn("daily occurrence generation failed", "error", err)
+		if err := migrateAndGenerateForAllTenants(); err != nil {
+			slog.Warn("daily migration and occurrence generation failed", "error", err)
 		}
 	}
 }
 
-func generateOccurrencesForAllTenants() error {
+func migrateAndGenerateForAllTenants() error {
 	controlURL := os.Getenv("NEXUS_CONTROL_URL")
 	if controlURL == "" {
 		controlURL = "http://nexus-control:8080"
@@ -85,10 +79,10 @@ func generateOccurrencesForAllTenants() error {
 		return fmt.Errorf("failed to list tenants: %w", err)
 	}
 
-	slog.Info("processing occurrence generation for tenants", "count", len(tenants))
+	slog.Info("processing migration and occurrence generation for tenants", "count", len(tenants))
 
 	for _, tenant := range tenants {
-		slog.Info("generating occurrences for tenant", "tenant_id", tenant.ID, "tenant_name", tenant.Name)
+		slog.Info("migrating and generating occurrences for tenant", "tenant_id", tenant.ID, "tenant_name", tenant.Name)
 
 		// Rotate service account to get credentials
 		serviceAccount, err := rotateServiceAccount(controlURL, adminKey, tenant.ID)
@@ -109,9 +103,9 @@ func generateOccurrencesForAllTenants() error {
 
 		database := db.WrapDB(sqlDB)
 
-		// Generate occurrences for this tenant
-		if err := db.GenerateOccurrences(database); err != nil {
-			slog.Error("failed to generate occurrences", "tenant_id", tenant.ID, "error", err)
+		// Run migrations and generate occurrences for this tenant
+		if err := db.MigrateAndGenerateTenant(database, tenant.ID); err != nil {
+			slog.Error("failed to migrate and generate occurrences", "tenant_id", tenant.ID, "error", err)
 		}
 
 		database.Close()

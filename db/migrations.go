@@ -1,72 +1,9 @@
 package db
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
-	"os"
-	"time"
 )
-
-// Migrate runs all DDL statements through the Nexus control endpoint so they
-// apply to all tenants. The control base URL is read from NEXUS_CONTROL_URL
-// (default: http://nexus-control:8080) and the admin key from ADMIN_API_KEY.
-func Migrate() error {
-	controlURL := os.Getenv("NEXUS_CONTROL_URL")
-	if controlURL == "" {
-		controlURL = "http://nexus-control:8080"
-	}
-	adminKey := os.Getenv("ADMIN_API_KEY")
-	if adminKey == "" {
-		slog.Warn("ADMIN_API_KEY is not set; requests to nexus-control will be unauthenticated")
-	}
-	endpoint := controlURL + "/api/v1/admin/query"
-
-	slog.Info("running database migrations", "endpoint", endpoint)
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	for _, stmt := range migrations {
-		if err := execAdminQuery(client, endpoint, adminKey, stmt); err != nil {
-			return fmt.Errorf("migration failed: %w\nstatement: %s", err, stmt)
-		}
-	}
-
-	slog.Info("database migrations complete")
-	return nil
-}
-
-// execAdminQuery posts a single SQL statement to the Nexus control admin endpoint.
-func execAdminQuery(client *http.Client, endpoint, adminKey, query string) error {
-	body, err := json.Marshal(map[string]string{"query": query})
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	if adminKey != "" {
-		req.Header.Set("X-Admin-API-Key", adminKey)
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("admin query returned status %d: %s", resp.StatusCode, string(b))
-	}
-	return nil
-}
 
 // MigrateDB runs all DDL statements directly against the provided database.
 // This is intended for use in tests where a live Nexus control endpoint is
@@ -84,67 +21,28 @@ func MigrateDB(db *PortalDB) error {
 	return nil
 }
 
-// MigrateViaAPI runs all portal migration statements against all tenant DuckDB
-// sessions via the nexus-control admin query API. It is safe to call multiple
-// times because every statement uses CREATE … IF NOT EXISTS or CREATE INDEX … IF
-// NOT EXISTS, making the operation idempotent.
+// MigrateAndGenerateTenant runs migrations and occurrence generation for a single tenant.
+// This function accepts a tenant-specific database connection and:
+//  1. Runs all DDL statements to create the portal schema for this tenant
+//  2. Generates any pending recurring payment occurrences
 //
-// nexusControlURL defaults to the NEXUS_CONTROL_URL environment variable, or
-// http://nexus-control:8080 when neither is provided.
-// adminKey defaults to the ADMIN_API_KEY environment variable when empty.
-func MigrateViaAPI(ctx context.Context, nexusControlURL, adminKey string) error {
-	url := nexusControlURL
-	if url == "" {
-		url = os.Getenv("NEXUS_CONTROL_URL")
-		if url == "" {
-			url = "http://nexus-control:8080"
-		}
+// This is the recommended approach for both:
+//   - New tenant registration (pass the new tenant's DB connection)
+//   - Batch processing all tenants (call once per tenant in a loop)
+func MigrateAndGenerateTenant(tenantDB *PortalDB, tenantID string) error {
+	slog.Info("migrating and generating occurrences for tenant", "tenant_id", tenantID)
+
+	// Step 1: Run migrations
+	if err := MigrateDB(tenantDB); err != nil {
+		return fmt.Errorf("migration failed for tenant %s: %w", tenantID, err)
 	}
 
-	key := adminKey
-	if key == "" {
-		key = os.Getenv("ADMIN_API_KEY")
-	}
-	if key == "" {
-		return fmt.Errorf("ADMIN_API_KEY is required for MigrateViaAPI")
+	// Step 2: Generate occurrences
+	if err := GenerateOccurrences(tenantDB); err != nil {
+		return fmt.Errorf("occurrence generation failed for tenant %s: %w", tenantID, err)
 	}
 
-	slog.Info("running database migrations via nexus admin API", "url", url)
-
-	for _, stmt := range migrations {
-		if err := execAdminQuery(ctx, url, key, stmt); err != nil {
-			return fmt.Errorf("migration via API failed: %w\nstatement: %s", err, stmt)
-		}
-	}
-
-	slog.Info("database migrations via nexus admin API complete")
-	return nil
-}
-
-// execAdminQuery posts a single SQL statement to the nexus-control admin query
-// endpoint, which executes it against every tenant's DuckDB session.
-func execAdminQuery(ctx context.Context, nexusControlURL, adminKey, query string) error {
-	body, err := json.Marshal(map[string]string{"query": query})
-	if err != nil {
-		return fmt.Errorf("marshal query: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, nexusControlURL+"/api/v1/admin/query", bytes.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Admin-API-Key", adminKey)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("admin query request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("admin query returned status %d", resp.StatusCode)
-	}
+	slog.Info("migration and occurrence generation complete for tenant", "tenant_id", tenantID)
 	return nil
 }
 

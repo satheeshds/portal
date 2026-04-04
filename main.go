@@ -47,6 +47,9 @@ func main() {
 	r.Post("/api/auth/register", handlers.Register)
 	r.Post("/api/auth/login", handlers.Login)
 
+	// Public registration with migration
+	r.Post("/api/v1/register", handlers.RegisterWithMigration)
+
 	// API routes with bearer token / basic auth
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(handlers.BearerAuth)
