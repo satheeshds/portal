@@ -142,7 +142,7 @@ func BearerAuth(next http.Handler) http.Handler {
 				return
 			}
 			token := authHeader[7:]
-			if !validateNexusToken(nexus, token) {
+			if !validateNexusToken(token) {
 				writeError(w, http.StatusUnauthorized, "unauthorized")
 				return
 			}
@@ -195,7 +195,8 @@ func BearerAuth(next http.Handler) http.Handler {
 // has not expired. It does NOT verify the cryptographic signature — full signature
 // verification happens at the Nexus layer when the token is forwarded for data
 // operations. This guard prevents obviously invalid or expired tokens from passing.
-func validateNexusToken(nexusBase, token string) bool {
+// A missing or zero exp claim is treated as invalid.
+func validateNexusToken(token string) bool {
 	if token == "" {
 		return false
 	}
@@ -215,9 +216,9 @@ func validateNexusToken(nexusBase, token string) bool {
 	if err := json.Unmarshal(claimsJSON, &claims); err != nil {
 		return false
 	}
-	// Reject expired tokens.
-	if claims.Exp > 0 && time.Now().Unix() > claims.Exp {
-		slog.Debug("rejected expired bearer token", "exp", claims.Exp)
+	// Require a present (non-zero) exp claim and reject expired tokens.
+	if claims.Exp == 0 || time.Now().Unix() >= claims.Exp {
+		slog.Debug("rejected bearer token: missing or expired exp claim", "exp", claims.Exp)
 		return false
 	}
 	return true
