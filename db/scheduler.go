@@ -18,10 +18,6 @@ type tenant struct {
 	Name string `json:"name"`
 }
 
-type tenantsResponse struct {
-	Tenants []tenant `json:"tenants"`
-}
-
 type serviceAccount struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -96,12 +92,12 @@ func listAllTenants(controlURL, adminKey string) ([]tenant, error) {
 		return nil, fmt.Errorf("list tenants returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var tr tenantsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tr); err != nil {
+	var tenants []tenant
+	if err := json.NewDecoder(resp.Body).Decode(&tenants); err != nil {
 		return nil, fmt.Errorf("failed to decode tenants response: %w", err)
 	}
 
-	return tr.Tenants, nil
+	return tenants, nil
 }
 
 func rotateTenantServiceAccount(controlURL, adminKey, tenantID string) (*serviceAccount, error) {
