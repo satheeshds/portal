@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,22 +12,67 @@ import (
 	"os"
 	"strings"
 	"time"
-	"context"
+
+	"github.com/satheeshds/portal/db"
+	_ "github.com/lib/pq"
 )
 
 // nexusClient is a shared HTTP client. Timeouts are managed at the request level via context
 // to allow different limits for registration (5 min) and login (30 sec).
 var nexusClient = &http.Client{}
 
+const (
+	defaultNexusGatewayHost = "nexus-gateway"
+	defaultNexusGatewayPort = "5433"
+)
+
 // nexusControlURL returns the configured Nexus gateway base URL, trimming any trailing slash.
 func nexusControlURL() string {
 	return strings.TrimRight(os.Getenv("NEXUS_CONTROL_URL"), "/")
 }
 
-// Register proxies a tenant registration request to the Nexus gateway.
+// serviceAccountCredentials holds the credentials returned by the service-account rotation endpoint.
+type serviceAccountCredentials struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Database string `json:"database"`
+}
+
+// rotateServiceAccountCreds calls the nexus-control service account rotation endpoint
+// and returns the credentials for the tenant's service account.
+func rotateServiceAccountCreds(ctx context.Context, nexusURL, adminKey, tenantID string) (*serviceAccountCredentials, error) {
+	endpoint := fmt.Sprintf("%s/api/v1/admin/tenants/%s/service-account/rotate", nexusURL, tenantID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader([]byte("{}")))
+	if err != nil {
+		return nil, fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-Admin-API-Key", adminKey)
+
+	resp, err := nexusClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("service account rotation: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("service account rotation returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var creds serviceAccountCredentials
+	if err := json.NewDecoder(resp.Body).Decode(&creds); err != nil {
+		return nil, fmt.Errorf("decode service account response: %w", err)
+	}
+	return &creds, nil
+}
+
+// Register provisions a new tenant via nexus-control and then initialises the
+// portal schema and occurrence generation for that tenant.
 //
 // @Summary      Register a new tenant
-// @Description  Proxies registration to the Nexus gateway. Requires NEXUS_CONTROL_URL to be configured.
+// @Description  Provisions a tenant via the Nexus gateway and initialises the portal schema. Requires NEXUS_CONTROL_URL and ADMIN_API_KEY to be configured.
 // @Tags         auth
 // @Accept       json
 // @Produce      json
@@ -33,32 +80,53 @@ func nexusControlURL() string {
 // @Success      201   {object}  map[string]string
 // @Failure      400   {object}  Response
 // @Failure      409   {object}  Response
+// @Failure      500   {object}  Response
 // @Failure      502   {object}  Response
 // @Router       /api/auth/register [post]
 func Register(w http.ResponseWriter, r *http.Request) {
-	base := nexusControlURL()
-	if base == "" {
-		writeError(w, http.StatusServiceUnavailable, "NEXUS_CONTROL_URL is not configured")
-		return
-	}
-
 	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "failed to read request body")
 		return
 	}
 
+	// Validate required fields before making any remote calls.
+	var req registerRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.OrgName == "" || req.Email == "" || req.Password == "" {
+		writeError(w, http.StatusBadRequest, "org_name, email, and password are required")
+		return
+	}
+
+	base := nexusControlURL()
+	if base == "" {
+		writeError(w, http.StatusServiceUnavailable, "NEXUS_CONTROL_URL is not configured")
+		return
+	}
+
+	adminKey := os.Getenv("ADMIN_API_KEY")
+	if adminKey == "" {
+		slog.Error("ADMIN_API_KEY is not set")
+		writeError(w, http.StatusInternalServerError, "server configuration error")
+		return
+	}
+
+	// Step 1: Register the tenant via nexus-control.
 	target := fmt.Sprintf("%s/api/v1/register", base)
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(body))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create register request")
 		return
 	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := nexusClient.Do(req)
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := nexusClient.Do(httpReq)
 	if err != nil {
 		slog.Error("nexus register request failed", "error", err)
 		writeError(w, http.StatusBadGateway, "nexus gateway unavailable")
@@ -66,7 +134,67 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	proxyResponse(w, resp)
+	respBody, _ := io.ReadAll(resp.Body)
+
+	// Proxy non-201 responses from nexus (e.g. 400, 409) directly to the client.
+	if resp.StatusCode != http.StatusCreated {
+		w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+		w.WriteHeader(resp.StatusCode)
+		_, _ = w.Write(respBody)
+		return
+	}
+
+	// Parse the tenant ID returned by nexus.
+	var nexusResp struct {
+		TenantID string `json:"tenant_id"`
+	}
+	if err := json.Unmarshal(respBody, &nexusResp); err != nil || nexusResp.TenantID == "" {
+		slog.Error("failed to parse nexus registration response", "error", err)
+		writeError(w, http.StatusBadGateway, "invalid response from nexus gateway")
+		return
+	}
+
+	tenantID := nexusResp.TenantID
+
+	// Step 2: Rotate service account to obtain tenant-specific DB credentials.
+	creds, err := rotateServiceAccountCreds(r.Context(), base, adminKey, tenantID)
+	if err != nil {
+		slog.Error("failed to rotate service account for new tenant", "tenant_id", tenantID, "error", err)
+		// Tenant was created; still return 201. The platform service will retry schema init.
+		writeJSON(w, http.StatusCreated, map[string]string{"tenant_id": tenantID})
+		return
+	}
+
+	// Step 3: Connect to the tenant's database.
+	nexusHost := os.Getenv("NEXUS_HOST")
+	if nexusHost == "" {
+		nexusHost = defaultNexusGatewayHost
+	}
+	nexusPort := os.Getenv("NEXUS_PORT")
+	if nexusPort == "" {
+		nexusPort = defaultNexusGatewayPort
+	}
+
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		nexusHost, nexusPort, creds.Username, creds.Password, creds.Database)
+
+	sqlDB, err := sql.Open("postgres", connStr)
+	if err != nil {
+		slog.Error("failed to open database connection for new tenant", "tenant_id", tenantID, "error", err)
+		// Tenant was created; still return 201. The platform service will retry.
+		writeJSON(w, http.StatusCreated, map[string]string{"tenant_id": tenantID})
+		return
+	}
+	defer sqlDB.Close()
+
+	// Step 4: Run migrations and generate occurrences for this tenant.
+	if err := db.MigrateAndGenerateTenant(db.WrapDB(sqlDB), tenantID); err != nil {
+		slog.Error("schema initialisation failed after tenant creation", "tenant_id", tenantID, "error", err)
+		// Tenant was created; still return 201. The platform service will retry.
+	}
+
+	slog.Info("tenant registered and portal schema initialised", "tenant_id", tenantID)
+	writeJSON(w, http.StatusCreated, map[string]string{"tenant_id": tenantID})
 }
 
 // Login proxies a login request to the Nexus gateway and returns the JWT token.
