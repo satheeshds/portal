@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -53,7 +54,7 @@ func MigrateAndGenerateAllTenants(controlURL, adminKey, nexusHost, nexusPort str
 			Scheme:   "postgres",
 			User:     url.UserPassword(creds.Username, creds.Password),
 			Host:     nexusHost + ":" + nexusPort,
-			Path:     "/" + creds.Database,
+			Path:     "/" + tenantDatabase(creds.Database),
 			RawQuery: "sslmode=disable",
 		}
 
@@ -114,6 +115,7 @@ func rotateTenantServiceAccount(controlURL, adminKey, tenantID string) (*service
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Admin-API-Key", adminKey)
 
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -137,4 +139,16 @@ func rotateTenantServiceAccount(controlURL, adminKey, tenantID string) (*service
 	}
 
 	return &sa, nil
+}
+
+// tenantDatabase returns db if non-empty, otherwise falls back to NEXUS_DATABASE env
+// var or "lake" — matching the default used by db.Open and db.OpenWithCredentials.
+func tenantDatabase(db string) string {
+	if db != "" {
+		return db
+	}
+	if v := os.Getenv("NEXUS_DATABASE"); v != "" {
+		return v
+	}
+	return "lake"
 }

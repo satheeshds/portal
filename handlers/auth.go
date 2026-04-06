@@ -49,6 +49,7 @@ func rotateServiceAccountCreds(ctx context.Context, nexusURL, adminKey, tenantID
 		return nil, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Admin-API-Key", adminKey)
 
 	resp, err := nexusClient.Do(req)
@@ -67,6 +68,18 @@ func rotateServiceAccountCreds(ctx context.Context, nexusURL, adminKey, tenantID
 		return nil, fmt.Errorf("decode service account response: %w", err)
 	}
 	return &creds, nil
+}
+
+// nexusDatabase returns db if non-empty, otherwise falls back to NEXUS_DATABASE env
+// var or "lake" — matching the default used by db.Open and db.OpenWithCredentials.
+func nexusDatabase(db string) string {
+	if db != "" {
+		return db
+	}
+	if v := os.Getenv("NEXUS_DATABASE"); v != "" {
+		return v
+	}
+	return "lake"
 }
 
 // Register provisions a new tenant via nexus-control and then initialises the
@@ -180,7 +193,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		Scheme:   "postgres",
 		User:     url.UserPassword(creds.Username, creds.Password),
 		Host:     nexusHost + ":" + nexusPort,
-		Path:     "/" + creds.Database,
+		Path:     "/" + nexusDatabase(creds.Database),
 		RawQuery: "sslmode=disable",
 	}
 
