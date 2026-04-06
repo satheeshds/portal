@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -175,10 +176,15 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		nexusPort = defaultNexusGatewayPort
 	}
 
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		nexusHost, nexusPort, creds.Username, creds.Password, creds.Database)
+	connURL := &url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(creds.Username, creds.Password),
+		Host:     nexusHost + ":" + nexusPort,
+		Path:     "/" + creds.Database,
+		RawQuery: "sslmode=disable",
+	}
 
-	sqlDB, err := sql.Open("postgres", connStr)
+	sqlDB, err := sql.Open("postgres", connURL.String())
 	if err != nil {
 		slog.Error("failed to open database connection for new tenant", "tenant_id", tenantID, "error", err)
 		// Tenant was created; still return 201. The platform service will retry.

@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -48,10 +49,15 @@ func MigrateAndGenerateAllTenants(controlURL, adminKey, nexusHost, nexusPort str
 			continue
 		}
 
-		connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-			nexusHost, nexusPort, creds.Username, creds.Password, creds.Database)
+		connURL := &url.URL{
+			Scheme:   "postgres",
+			User:     url.UserPassword(creds.Username, creds.Password),
+			Host:     nexusHost + ":" + nexusPort,
+			Path:     "/" + creds.Database,
+			RawQuery: "sslmode=disable",
+		}
 
-		sqlDB, err := sql.Open("postgres", connStr)
+		sqlDB, err := sql.Open("postgres", connURL.String())
 		if err != nil {
 			slog.Error("failed to open database connection", "tenant_id", t.ID, "error", err)
 			continue
