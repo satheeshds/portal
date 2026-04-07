@@ -4,48 +4,83 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strings"
 )
+
+var tableRegex = regexp.MustCompile(`(?i)\b(FROM|JOIN|INTO|UPDATE)\s+([a-zA-Z0-9_\.]+)\b`)
 
 // rebind converts ? positional placeholders to $N placeholders required by the
 // PostgreSQL wire protocol used by the Nexus gateway. It correctly skips ? characters
 // that appear inside single-quoted SQL string literals.
+// Also adds 'lake.' namespace before table names if not already present.
 func rebind(query string) string {
-	if !strings.Contains(query, "?") {
-		return query
-	}
 	n := 0
 	var b strings.Builder
-	b.Grow(len(query) + 10)
+	b.Grow(len(query) + 20)
 	runes := []rune(query)
 	inString := false
+	lastPart := 0
+
 	for i := 0; i < len(runes); i++ {
 		r := runes[i]
-		if inString {
-			b.WriteRune(r)
-			if r == '\'' {
-				// A doubled single-quote '' is an escaped quote inside a string literal.
+		if r == '\'' {
+			if inString {
+				// Single quote inside string
 				if i+1 < len(runes) && runes[i+1] == '\'' {
-					b.WriteRune(runes[i+1])
 					i++
-				} else {
-					inString = false
+					continue
 				}
-			}
-		} else {
-			switch r {
-			case '\'':
+				// End of string literal
+				b.WriteString(string(runes[lastPart : i+1]))
+				lastPart = i + 1
+				inString = false
+			} else {
+				// Entering string literal. Process leading code.
+				code := string(runes[lastPart:i])
+				b.WriteString(processCode(code, &n))
+				lastPart = i
 				inString = true
-				b.WriteRune(r)
-			case '?':
-				n++
-				b.WriteString(fmt.Sprintf("$%d", n))
-			default:
-				b.WriteRune(r)
 			}
 		}
 	}
+
+	// Process final block
+	if inString {
+		b.WriteString(string(runes[lastPart:]))
+	} else {
+		b.WriteString(processCode(string(runes[lastPart:]), &n))
+	}
+
 	return b.String()
+}
+
+func processCode(code string, n *int) string {
+	// 1. Add 'lake.' namespace to table references
+	code = tableRegex.ReplaceAllStringFunc(code, func(m string) string {
+		parts := tableRegex.FindStringSubmatch(m)
+		if len(parts) < 3 {
+			return m
+		}
+		keyword := parts[1]
+		table := parts[2]
+		if !strings.Contains(table, ".") {
+			return keyword + " lake." + table
+		}
+		return m
+	})
+
+	// 2. Replace ? with $N
+	var res strings.Builder
+	for _, r := range code {
+		if r == '?' {
+			*n++
+			res.WriteString(fmt.Sprintf("$%d", *n))
+		} else {
+			res.WriteRune(r)
+		}
+	}
+	return res.String()
 }
 
 // PortalDB wraps *sql.DB and automatically rebinds ? placeholders to $N
