@@ -7,7 +7,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -19,9 +18,8 @@ type tenant struct {
 }
 
 type serviceAccount struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Database string `json:"database"`
+	Username string `json:"service_id"`
+	Password string `json:"service_api_key"`
 }
 
 // MigrateAndGenerateAllTenants lists every tenant from nexus-control, connects to each
@@ -42,7 +40,7 @@ func MigrateAndGenerateAllTenants(controlURL, adminKey string) error {
 	for _, t := range tenants {
 		slog.Info("migrating and generating occurrences for tenant", "tenant_id", t.ID, "tenant_name", t.Name)
 
-		creds, err := rotateTenantServiceAccount(controlURL, adminKey, t.ID)
+		creds, err := RotateTenantServiceAccount(controlURL, adminKey, t.ID)
 		if err != nil {
 			slog.Error("failed to rotate service account", "tenant_id", t.ID, "error", err)
 			continue
@@ -96,7 +94,7 @@ func listAllTenants(controlURL, adminKey string) ([]tenant, error) {
 	return tenants, nil
 }
 
-func rotateTenantServiceAccount(controlURL, adminKey, tenantID string) (*serviceAccount, error) {
+func RotateTenantServiceAccount(controlURL, adminKey, tenantID string) (*serviceAccount, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/admin/tenants/%s/service-account/rotate", controlURL, tenantID)
 
 	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader([]byte("{}")))
@@ -127,17 +125,7 @@ func rotateTenantServiceAccount(controlURL, adminKey, tenantID string) (*service
 		return nil, fmt.Errorf("failed to decode service account response: %w", err)
 	}
 
-	return &sa, nil
-}
+	slog.Debug("rotated service account", "tenant_id", tenantID, "service_account", sa)
 
-// tenantDatabase returns db if non-empty, otherwise falls back to NEXUS_DATABASE env
-// var or "lake" — matching the default used by db.Open and db.OpenWithCredentials.
-func tenantDatabase(db string) string {
-	if db != "" {
-		return db
-	}
-	if v := os.Getenv("NEXUS_DATABASE"); v != "" {
-		return v
-	}
-	return "lake"
+	return &sa, nil
 }

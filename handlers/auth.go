@@ -30,44 +30,6 @@ func nexusControlURL() string {
 	return strings.TrimRight(os.Getenv("NEXUS_CONTROL_URL"), "/")
 }
 
-// serviceAccountCredentials holds the credentials returned by the service-account rotation endpoint.
-type serviceAccountCredentials struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Database string `json:"database"`
-}
-
-// rotateServiceAccountCreds calls the nexus-control service account rotation endpoint
-// and returns the credentials for the tenant's service account.
-func rotateServiceAccountCreds(ctx context.Context, nexusURL, adminKey, tenantID string) (*serviceAccountCredentials, error) {
-	endpoint := fmt.Sprintf("%s/api/v1/admin/tenants/%s/service-account/rotate", nexusURL, tenantID)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader([]byte("{}")))
-	if err != nil {
-		return nil, fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Admin-API-Key", adminKey)
-
-	resp, err := nexusClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("service account rotation: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("service account rotation returned status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var creds serviceAccountCredentials
-	if err := json.NewDecoder(resp.Body).Decode(&creds); err != nil {
-		return nil, fmt.Errorf("decode service account response: %w", err)
-	}
-	return &creds, nil
-}
-
 // nexusDatabase returns db if non-empty, otherwise falls back to NEXUS_DATABASE env
 // var or "lake" — matching the default used by db.Open and db.OpenWithCredentials.
 func nexusDatabase(db string) string {
@@ -169,7 +131,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	tenantID := nexusResp.TenantID
 
 	// Step 2: Rotate service account to obtain tenant-specific DB credentials.
-	creds, err := rotateServiceAccountCreds(r.Context(), base, adminKey, tenantID)
+	creds, err := db.RotateTenantServiceAccount(base, adminKey, tenantID)
 	if err != nil {
 		slog.Error("failed to rotate service account for new tenant", "tenant_id", tenantID, "error", err)
 		// Tenant was created; still return 201. The platform service will retry schema init.
