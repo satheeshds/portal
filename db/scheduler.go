@@ -124,6 +124,9 @@ func RotateTenantServiceAccount(controlURL, adminKey, tenantID string) (*service
 	if err := json.NewDecoder(resp.Body).Decode(&sa); err != nil {
 		return nil, fmt.Errorf("failed to decode service account response: %w", err)
 	}
+	if sa.Username == "" || sa.Password == "" {
+		return nil, fmt.Errorf("rotate service account response missing required credentials for tenant %s", tenantID)
+	}
 
 	slog.Debug("rotated service account", "tenant_id", tenantID, "service_account", sa)
 
