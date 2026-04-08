@@ -74,7 +74,7 @@ func processCode(code string, n *int) string {
 	var res strings.Builder
 	for _, r := range code {
 		if r == '?' {
-			*n++
+			*n += 1
 			res.WriteString(fmt.Sprintf("$%d", *n))
 		} else {
 			res.WriteRune(r)
