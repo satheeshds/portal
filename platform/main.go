@@ -24,9 +24,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Migrate and generate occurrences once at startup (gap recovery).
-	if err := db.MigrateAndGenerateAllTenants(controlURL, adminKey); err != nil {
-		slog.Warn("migration and occurrence generation failed on startup", "error", err)
+	// Migrate schemas once at startup for all tenants.
+	if err := db.MigrateAllTenants(controlURL, adminKey); err != nil {
+		slog.Warn("schema migration failed on startup", "error", err)
+	}
+
+	// Generate occurrences once at startup (gap recovery for any missed periods).
+	if err := db.GenerateOccurrencesForAllTenants(controlURL, adminKey); err != nil {
+		slog.Warn("occurrence generation failed on startup", "error", err)
 	}
 
 	// Daily loop: re-run only occurrence generation (migrations already applied above).

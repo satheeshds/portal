@@ -29,20 +29,16 @@ func MigrateDB(db *PortalDB) error {
 // This is the recommended approach for both:
 //   - New tenant registration (pass the new tenant's DB connection)
 //   - Batch processing all tenants (call once per tenant in a loop)
-func MigrateAndGenerateTenant(tenantDB *PortalDB, tenantID string) error {
-	slog.Info("migrating and generating occurrences for tenant", "tenant_id", tenantID)
+// MigrateTenant runs schema migrations for a single tenant database.
+// Occurrence generation is handled separately by the platform service.
+func MigrateTenant(tenantDB *PortalDB, tenantID string) error {
+	slog.Info("migrating tenant schema", "tenant_id", tenantID)
 
-	// Step 1: Run migrations
 	if err := MigrateDB(tenantDB); err != nil {
 		return fmt.Errorf("migration failed for tenant %s: %w", tenantID, err)
 	}
 
-	// Step 2: Generate any pending recurring payment occurrences (one-shot).
-	if err := GenerateRecurringOccurrences(tenantDB); err != nil {
-		return fmt.Errorf("occurrence generation failed for tenant %s: %w", tenantID, err)
-	}
-
-	slog.Info("migration and occurrence generation complete for tenant", "tenant_id", tenantID)
+	slog.Info("migration complete for tenant", "tenant_id", tenantID)
 	return nil
 }
 

@@ -22,14 +22,14 @@ type serviceAccount struct {
 	Password string `json:"service_api_key"`
 }
 
-// MigrateAndGenerateAllTenants lists every tenant from nexus-control, connects to each
+// MigrateAllTenants lists every tenant from nexus-control, connects to each
 // tenant's database via the nexus gateway using rotated service-account credentials, and
-// calls MigrateAndGenerateTenant for each one.
+// runs schema migrations for each one (no occurrence generation).
 //
-// This function is intended to be called once on startup (gap recovery) by the platform
-// service. After startup, GenerateOccurrencesForAllTenants is used for the daily schedule.
-func MigrateAndGenerateAllTenants(controlURL, adminKey string) error {
-	return forEachTenant(controlURL, adminKey, "migrating and generating occurrences", MigrateAndGenerateTenant)
+// This function is intended to be called once on startup by the platform service.
+// After migrations, GenerateOccurrencesForAllTenants should be called separately.
+func MigrateAllTenants(controlURL, adminKey string) error {
+	return forEachTenant(controlURL, adminKey, "migrating schema", MigrateTenant)
 }
 
 // GenerateOccurrencesForAllTenants lists every tenant from nexus-control, connects to each

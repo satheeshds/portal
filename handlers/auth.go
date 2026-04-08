@@ -149,9 +149,10 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tenantDB.Close()
 
-	// Step 4: Run migrations and generate occurrences for this tenant.
-	if err := db.MigrateAndGenerateTenant(tenantDB, tenantID); err != nil {
-		slog.Error("schema initialisation failed after tenant creation", "tenant_id", tenantID, "error", err)
+	// Step 4: Run schema migrations for this tenant.
+	// Occurrence generation is handled by the platform service on its next cycle.
+	if err := db.MigrateTenant(tenantDB, tenantID); err != nil {
+		slog.Error("schema migration failed after tenant creation", "tenant_id", tenantID, "error", err)
 		// Tenant was created; still return 201. The platform service will retry.
 	}
 
