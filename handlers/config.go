@@ -21,15 +21,15 @@ type Config struct {
 	AuthPass string
 }
 
-// Cfg is the package-level portal configuration. It is set once at startup
+// cfg is the package-level portal configuration. It is set once at startup
 // via Configure and then read by all handlers without further env-var lookups.
-var Cfg Config
+var cfg Config
 
 // Configure sets the portal handler configuration. It must be called once at
 // startup before any requests are served. It is not safe to call concurrently
 // with request handling.
 func Configure(c Config) {
-	Cfg = c
+	cfg = c
 }
 
 // ConfigFromEnv reads the portal configuration from environment variables.
