@@ -95,8 +95,8 @@ func DBRequired(next http.Handler) http.Handler {
 
 // BasicAuth is middleware that enforces HTTP Basic Authentication.
 func BasicAuth(next http.Handler) http.Handler {
-	user := Cfg.AuthUser
-	pass := Cfg.AuthPass
+	user := cfg.AuthUser
+	pass := cfg.AuthPass
 
 	// If no credentials are configured, skip auth
 	if user == "" && pass == "" {
@@ -121,10 +121,10 @@ func BasicAuth(next http.Handler) http.Handler {
 // If neither NEXUS_CONTROL_URL nor AUTH_USER/AUTH_PASS are configured the middleware
 // falls back to the unauthenticated (open) behaviour and logs a warning.
 func BearerAuth(next http.Handler) http.Handler {
-	nexus := Cfg.NexusControlURL
-	authUser := Cfg.AuthUser
-	authPass := Cfg.AuthPass
-	nexusHost := Cfg.NexusHost
+	nexus := cfg.NexusControlURL
+	authUser := cfg.AuthUser
+	authPass := cfg.AuthPass
+	nexusHost := cfg.NexusHost
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// If nothing is configured, warn and pass through (same as original BasicAuth).

@@ -51,13 +51,13 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	base := Cfg.NexusControlURL
+	base := cfg.NexusControlURL
 	if base == "" {
 		writeError(w, http.StatusServiceUnavailable, "NEXUS_CONTROL_URL is not configured")
 		return
 	}
 
-	adminKey := Cfg.AdminAPIKey
+	adminKey := cfg.AdminAPIKey
 	if adminKey == "" {
 		slog.Error("ADMIN_API_KEY is not set")
 		writeError(w, http.StatusInternalServerError, "server configuration error")
@@ -150,7 +150,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 // @Failure      502   {object}  Response
 // @Router       /api/auth/login [post]
 func Login(w http.ResponseWriter, r *http.Request) {
-	base := Cfg.NexusControlURL
+	base := cfg.NexusControlURL
 	if base == "" {
 		writeError(w, http.StatusServiceUnavailable, "NEXUS_CONTROL_URL is not configured")
 		return

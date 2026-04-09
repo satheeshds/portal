@@ -66,6 +66,15 @@ func postRegister(t *testing.T, url string, body any) *httptest.ResponseRecorder
 	return rec
 }
 
+// withTestConfig sets the package-level config for the duration of a test and
+// restores the previous value via t.Cleanup.
+func withTestConfig(t *testing.T, c Config) {
+	t.Helper()
+	old := cfg
+	Configure(c)
+	t.Cleanup(func() { Configure(old) })
+}
+
 func TestRegister_Success(t *testing.T) {
 	// withRotation=true: rotation endpoint returns credentials, but the real nexus-gateway
 	// is unavailable so the DB connection fails. Schema init is best-effort; handler
@@ -73,9 +82,7 @@ func TestRegister_Success(t *testing.T) {
 	nexus := stubNexusServer(t, "", false, true)
 	defer nexus.Close()
 
-	old := Cfg
-	Cfg = Config{NexusControlURL: nexus.URL, AdminAPIKey: "test-admin-key"}
-	defer func() { Cfg = old }()
+	withTestConfig(t, Config{NexusControlURL: nexus.URL, AdminAPIKey: "test-admin-key"})
 
 	rec := postRegister(t, "/api/auth/register", map[string]string{
 		"org_name": "Acme Corp",
@@ -131,9 +138,7 @@ func TestRegister_NexusConflict(t *testing.T) {
 	nexus := stubNexusServer(t, "", true, false)
 	defer nexus.Close()
 
-	old := Cfg
-	Cfg = Config{NexusControlURL: nexus.URL, AdminAPIKey: "test-admin-key"}
-	defer func() { Cfg = old }()
+	withTestConfig(t, Config{NexusControlURL: nexus.URL, AdminAPIKey: "test-admin-key"})
 
 	rec := postRegister(t, "/api/auth/register", map[string]string{
 		"org_name": "Acme Corp",
@@ -150,9 +155,7 @@ func TestRegister_NexusError(t *testing.T) {
 	nexus := stubNexusServer(t, "provisioning failed", false, false)
 	defer nexus.Close()
 
-	old := Cfg
-	Cfg = Config{NexusControlURL: nexus.URL, AdminAPIKey: "test-admin-key"}
-	defer func() { Cfg = old }()
+	withTestConfig(t, Config{NexusControlURL: nexus.URL, AdminAPIKey: "test-admin-key"})
 
 	rec := postRegister(t, "/api/auth/register", map[string]string{
 		"org_name": "Acme Corp",
@@ -172,9 +175,7 @@ func TestRegister_RotationFailure(t *testing.T) {
 	nexus := stubNexusServer(t, "", false, false)
 	defer nexus.Close()
 
-	old := Cfg
-	Cfg = Config{NexusControlURL: nexus.URL, AdminAPIKey: "test-admin-key"}
-	defer func() { Cfg = old }()
+	withTestConfig(t, Config{NexusControlURL: nexus.URL, AdminAPIKey: "test-admin-key"})
 
 	rec := postRegister(t, "/api/auth/register", map[string]string{
 		"org_name": "Acme Corp",
