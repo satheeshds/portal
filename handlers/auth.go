@@ -8,8 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
-	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -19,28 +17,6 @@ import (
 // nexusClient is a shared HTTP client. Timeouts are managed at the request level via context
 // to allow different limits for registration (5 min) and login (30 sec).
 var nexusClient = &http.Client{}
-
-const (
-	defaultNexusGatewayHost = "nexus-gateway"
-	defaultNexusGatewayPort = "5433"
-)
-
-// nexusControlURL returns the configured Nexus gateway base URL, trimming any trailing slash.
-func nexusControlURL() string {
-	return strings.TrimRight(os.Getenv("NEXUS_CONTROL_URL"), "/")
-}
-
-// nexusDatabase returns db if non-empty, otherwise falls back to NEXUS_DATABASE env
-// var or "lake" — matching the default used by db.Open and db.OpenWithCredentials.
-func nexusDatabase(db string) string {
-	if db != "" {
-		return db
-	}
-	if v := os.Getenv("NEXUS_DATABASE"); v != "" {
-		return v
-	}
-	return "lake"
-}
 
 // Register provisions a new tenant via nexus-control and then initialises the
 // portal schema and occurrence generation for that tenant.
@@ -75,13 +51,13 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	base := nexusControlURL()
+	base := cfg.NexusControlURL
 	if base == "" {
 		writeError(w, http.StatusServiceUnavailable, "NEXUS_CONTROL_URL is not configured")
 		return
 	}
 
-	adminKey := os.Getenv("ADMIN_API_KEY")
+	adminKey := cfg.AdminAPIKey
 	if adminKey == "" {
 		slog.Error("ADMIN_API_KEY is not set")
 		writeError(w, http.StatusInternalServerError, "server configuration error")
@@ -174,7 +150,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 // @Failure      502   {object}  Response
 // @Router       /api/auth/login [post]
 func Login(w http.ResponseWriter, r *http.Request) {
-	base := nexusControlURL()
+	base := cfg.NexusControlURL
 	if base == "" {
 		writeError(w, http.StatusServiceUnavailable, "NEXUS_CONTROL_URL is not configured")
 		return

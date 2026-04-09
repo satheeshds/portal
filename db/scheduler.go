@@ -12,6 +12,9 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// nexusHTTPClient is a shared HTTP client used for all nexus-control admin API calls.
+var nexusHTTPClient = &http.Client{Timeout: 30 * time.Second}
+
 type tenant struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -85,8 +88,7 @@ func listAllTenants(controlURL, adminKey string) ([]tenant, error) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("X-Admin-API-Key", adminKey)
 
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := nexusHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -119,8 +121,7 @@ func RotateTenantServiceAccount(controlURL, adminKey, tenantID string) (*service
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Admin-API-Key", adminKey)
 
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := nexusHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

@@ -11,7 +11,6 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -96,8 +95,8 @@ func DBRequired(next http.Handler) http.Handler {
 
 // BasicAuth is middleware that enforces HTTP Basic Authentication.
 func BasicAuth(next http.Handler) http.Handler {
-	user := os.Getenv("AUTH_USER")
-	pass := os.Getenv("AUTH_PASS")
+	user := cfg.AuthUser
+	pass := cfg.AuthPass
 
 	// If no credentials are configured, skip auth
 	if user == "" && pass == "" {
@@ -122,11 +121,12 @@ func BasicAuth(next http.Handler) http.Handler {
 // If neither NEXUS_CONTROL_URL nor AUTH_USER/AUTH_PASS are configured the middleware
 // falls back to the unauthenticated (open) behaviour and logs a warning.
 func BearerAuth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		nexus := os.Getenv("NEXUS_CONTROL_URL")
-		authUser := os.Getenv("AUTH_USER")
-		authPass := os.Getenv("AUTH_PASS")
+	nexus := cfg.NexusControlURL
+	authUser := cfg.AuthUser
+	authPass := cfg.AuthPass
+	nexusHost := cfg.NexusHost
 
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// If nothing is configured, warn and pass through (same as original BasicAuth).
 		if nexus == "" && authUser == "" && authPass == "" {
 			slog.Warn("no auth configured (NEXUS_CONTROL_URL, AUTH_USER, AUTH_PASS), API is unauthenticated")
@@ -153,7 +153,7 @@ func BearerAuth(next http.Handler) http.Handler {
 			// handler returns to ensure it stays open for the full request lifecycle.
 			// Note: the DSN embeds the JWT token; avoid logging it in error paths.
 			var reqDB *db.PortalDB
-			if os.Getenv("NEXUS_HOST") != "" {
+			if nexusHost != "" {
 				tenantID, ok := extractTenantID(token)
 				if !ok {
 					writeError(w, http.StatusUnauthorized, "unauthorized")

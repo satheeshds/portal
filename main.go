@@ -37,6 +37,9 @@ func main() {
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level})))
 
+	// Read all configuration from environment variables once at startup.
+	handlers.Configure(handlers.ConfigFromEnv())
+
 	// Router setup
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
