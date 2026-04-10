@@ -2,7 +2,6 @@ package models
 
 import (
 	"fmt"
-	"time"
 )
 
 // Invoice represents a receivable invoice to a customer.
@@ -16,8 +15,8 @@ type Invoice struct {
 	Status        string    `json:"status"`
 	FileURL       *string   `json:"file_url"`
 	Notes         *string   `json:"notes"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	CreatedAt     Timestamp `json:"created_at"`
+	UpdatedAt     Timestamp `json:"updated_at"`
 	// Computed fields
 	ContactName *string       `json:"contact_name,omitempty"`
 	Allocated   Money         `json:"allocated"`
@@ -73,8 +72,8 @@ type InvoiceItem struct {
 	Unit        *string   `json:"unit"`
 	UnitPrice   Money     `json:"unit_price"`
 	Amount      Money     `json:"amount"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	CreatedAt   Timestamp `json:"created_at"`
+	UpdatedAt   Timestamp `json:"updated_at"`
 }
 
 // InvoiceItemInput is used for creating/updating invoice line items.

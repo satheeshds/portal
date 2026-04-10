@@ -1,7 +1,5 @@
 package models
 
-import "time"
-
 // RecurringPayment represents a scheduled recurring payment (income or expense).
 type RecurringPayment struct {
 	ID                int       `json:"id"`
@@ -19,8 +17,8 @@ type RecurringPayment struct {
 	Status            string    `json:"status"` // active, paused, cancelled, completed
 	Description       *string   `json:"description"`
 	Reference         *string   `json:"reference"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	CreatedAt         Timestamp `json:"created_at"`
+	UpdatedAt         Timestamp `json:"updated_at"`
 	// Computed fields
 	AccountName *string `json:"account_name,omitempty"`
 	ContactName *string `json:"contact_name,omitempty"`
@@ -34,8 +32,8 @@ type RecurringPaymentOccurrence struct {
 	DueDate            string    `json:"due_date"`
 	Amount             Money     `json:"amount"`
 	Status             string    `json:"status"` // pending, paid, skipped
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	CreatedAt          Timestamp `json:"created_at"`
+	UpdatedAt          Timestamp `json:"updated_at"`
 	// Computed fields
 	Allocated   Money   `json:"allocated"`
 	Unallocated Money   `json:"unallocated"`
