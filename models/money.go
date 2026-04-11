@@ -69,7 +69,7 @@ func (m *Money) Scan(value interface{}) error {
 	case string:
 		i, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
-			return fmt.Errorf("cannot scan %T into Money", value)
+			return fmt.Errorf("cannot scan string %q into Money: %w", v, err)
 		}
 		*m = Money(i)
 	default:
