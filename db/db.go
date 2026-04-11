@@ -72,13 +72,14 @@ func OpenWithCredentials(tenantID, token string) (*PortalDB, error) {
 		return nil, fmt.Errorf("failed to connect to tenant database: %w", pingErr)
 	}
 
-	// Set search_path explicitly via SQL so that unqualified table references
-	// resolve to the correct schema regardless of how the Nexus gateway handles
-	// startup connection parameters. pq.QuoteIdentifier safely escapes the
-	// schema name to prevent SQL injection.
+	// Best-effort: set search_path via SQL so that any unqualified table
+	// references resolve to the correct schema. This is belt-and-suspenders —
+	// PortalDB.rebind() already prepends the schema to every table name, so
+	// queries continue to work even if the Nexus gateway does not propagate
+	// SET commands. pq.QuoteIdentifier safely escapes the schema name.
 	if _, err := sqlDB.Exec("SET search_path TO " + pq.QuoteIdentifier(schema)); err != nil {
-		sqlDB.Close()
-		return nil, fmt.Errorf("failed to set search_path to %q: %w", schema, err)
+		slog.Warn("could not set search_path; queries will rely on schema-qualified table names",
+			"schema", schema, "error", err)
 	}
 
 	return WrapDB(sqlDB), nil
