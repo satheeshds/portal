@@ -6,6 +6,7 @@ require (
 	github.com/duckdb/duckdb-go/v2 v2.5.0
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/lib/pq v1.12.1
+	github.com/pressly/goose/v3 v3.24.3
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.6
 )
@@ -38,10 +39,12 @@ require (
 	github.com/klauspost/compress v1.18.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
+	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/pierrec/lz4/v4 v4.1.25 // indirect
-	github.com/rogpeppe/go-internal v1.14.1 // indirect
+	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
