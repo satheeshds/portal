@@ -1,7 +1,5 @@
 package models
 
-import "time"
-
 // TransactionDocument links a transaction to a bill, invoice, payout or recurring payment occurrence with an allocated amount.
 type TransactionDocument struct {
 	ID            int       `json:"id"`
@@ -9,7 +7,7 @@ type TransactionDocument struct {
 	DocumentType  string    `json:"document_type"` // bill, invoice, payout or recurring_payment_occurrence
 	DocumentID    int       `json:"document_id"`
 	Amount        Money     `json:"amount"`
-	CreatedAt     time.Time `json:"created_at"`
+	CreatedAt     Timestamp `json:"created_at"`
 }
 
 // TransactionDocumentInput is used for linking transactions to bills, invoices, payouts or recurring payment occurrences.

@@ -1,7 +1,5 @@
 package models
 
-import "time"
-
 // Contact represents a vendor or customer.
 type Contact struct {
 	ID              int       `json:"id"`
@@ -12,8 +10,8 @@ type Contact struct {
 	TotalAmount     Money     `json:"total_amount"`     // Computed: Sum of bills/invoices
 	AllocatedAmount Money     `json:"allocated_amount"` // Computed: Sum of payments
 	Balance         Money     `json:"balance"`          // Computed: Total - Allocated
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	CreatedAt       Timestamp `json:"created_at"`
+	UpdatedAt       Timestamp `json:"updated_at"`
 }
 
 // ContactInput is used for creating/updating contacts.

@@ -2,7 +2,6 @@ package models
 
 import (
 	"strings"
-	"time"
 )
 
 // Payout represents a platform payout record.
@@ -21,7 +20,7 @@ type Payout struct {
 	MarketingAdsAmt       Money     `json:"marketing_ads_amt"`
 	FinalPayoutAmt        Money     `json:"final_payout_amt"`
 	UtrNumber             string    `json:"utr_number"`
-	CreatedAt             time.Time `json:"created_at"`
+	CreatedAt             Timestamp `json:"created_at"`
 	// Computed fields
 	Allocated   Money `json:"allocated"`
 	Unallocated Money `json:"unallocated"`

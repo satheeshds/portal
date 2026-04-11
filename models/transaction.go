@@ -1,7 +1,5 @@
 package models
 
-import "time"
-
 // Transaction represents a bank transaction (income, expense, or transfer).
 type Transaction struct {
 	ID                int       `json:"id"`
@@ -13,8 +11,8 @@ type Transaction struct {
 	Reference         *string   `json:"reference"`
 	TransferAccountID *int      `json:"transfer_account_id"`
 	ContactID         *int      `json:"contact_id"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	CreatedAt         Timestamp `json:"created_at"`
+	UpdatedAt         Timestamp `json:"updated_at"`
 	// Computed fields
 	AccountName         *string `json:"account_name,omitempty"`
 	TransferAccountName *string `json:"transfer_account_name,omitempty"`

@@ -1,7 +1,5 @@
 package models
 
-import "time"
-
 // Account represents a bank account, cash, or credit card.
 type Account struct {
 	ID             int       `json:"id"`
@@ -9,8 +7,8 @@ type Account struct {
 	Type           string    `json:"type"` // bank, cash, credit_card
 	OpeningBalance Money     `json:"opening_balance"`
 	Balance        Money     `json:"balance"` // Computed
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	CreatedAt      Timestamp `json:"created_at"`
+	UpdatedAt      Timestamp `json:"updated_at"`
 }
 
 // AccountInput is used for creating/updating accounts.

@@ -66,6 +66,12 @@ func (m *Money) Scan(value interface{}) error {
 			return err
 		}
 		*m = Money(i)
+	case string:
+		i, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return fmt.Errorf("cannot scan string %q into Money: %w", v, err)
+		}
+		*m = Money(i)
 	default:
 		// Attempt to handle *big.Int via String() method for max compatibility
 		if stringer, ok := value.(fmt.Stringer); ok {
