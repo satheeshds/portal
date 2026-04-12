@@ -55,19 +55,21 @@ func ListAccounts(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	var accounts []models.Account
-	slog.Debug("Accounts", "query result count", rows)
 	rowCount := 0
 	for rows.Next() {
-		slog.Debug("Accounts", "next row", rowCount)
-		rowCount++
 		var a models.Account
 		if err := rows.Scan(&a.ID, &a.Name, &a.Type, &a.OpeningBalance, &a.CreatedAt, &a.UpdatedAt, &a.Balance); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		slog.Debug("Accounts", "scanned account", a)
+		rowCount++
 		accounts = append(accounts, a)
 	}
+	if err := rows.Err(); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	slog.Debug("Accounts", "rowCount", rowCount)
 	if accounts == nil {
 		accounts = []models.Account{}
 	}
