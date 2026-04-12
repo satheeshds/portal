@@ -4,12 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strings"
 )
+
+var tableRegex = regexp.MustCompile(`(?i)\b(FROM|JOIN|INTO|UPDATE)\s+([a-zA-Z0-9_\.]+)\b`)
 
 // rebind converts ? positional placeholders to $N placeholders required by the
 // PostgreSQL wire protocol used by the Nexus gateway. It correctly skips ? characters
 // that appear inside single-quoted SQL string literals.
+// Also adds 'lake.' namespace before table names if not already present.
 func rebind(query string) string {
 	n := 0
 	var b strings.Builder
@@ -52,7 +56,21 @@ func rebind(query string) string {
 }
 
 func processCode(code string, n *int) string {
-	// Replace ? with $N
+	// 1. Add 'lake.' namespace to table references
+	code = tableRegex.ReplaceAllStringFunc(code, func(m string) string {
+		parts := tableRegex.FindStringSubmatch(m)
+		if len(parts) < 3 {
+			return m
+		}
+		keyword := parts[1]
+		table := parts[2]
+		if !strings.Contains(table, ".") {
+			return keyword + " lake." + table
+		}
+		return m
+	})
+
+	// 2. Replace ? with $N
 	var res strings.Builder
 	for _, r := range code {
 		if r == '?' {
