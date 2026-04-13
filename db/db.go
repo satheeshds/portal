@@ -28,7 +28,7 @@ func OpenWithCredentials(tenantID, token string) (*PortalDB, error) {
 	}
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		host, port, tenantID, token, database)
-	sqlDB, err := sql.Open("postgres", dsn)
+	sqlDB, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open per-request database connection: %w", err)
 	}
@@ -65,7 +65,7 @@ func Open() (*PortalDB, error) {
 			host, port, user, password, database)
 	}
 
-	sqlDB, err := sql.Open("postgres", dsn)
+	sqlDB, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
