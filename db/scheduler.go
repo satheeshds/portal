@@ -8,8 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
-
-	_ "github.com/lib/pq"
 )
 
 // nexusHTTPClient is a shared HTTP client used for all nexus-control admin API calls.

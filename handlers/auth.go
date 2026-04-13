@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"time"
 
-	_ "github.com/lib/pq"
 	"github.com/satheeshds/portal/db"
 )
 

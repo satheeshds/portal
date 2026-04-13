@@ -5,7 +5,30 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 )
+
+// openDB parses the DSN, configures pgx to use QueryExecModeExec (extended
+// query protocol without a Describe round-trip), and returns a *sql.DB.
+//
+// QueryExecModeExec sends Parse→Bind→Execute→Sync for every query.  This
+// avoids two problems that arise with the Nexus gateway:
+//   - No Describe step means no binary-format OID negotiation, eliminating
+//     the binary type-mismatch errors seen with the default cached-statement
+//     mode.
+//   - No simple-query protocol means pgx never checks for
+//     standard_conforming_strings in the server's ParameterStatus map, which
+//     the gateway does not advertise.
+func openDB(dsn string) (*sql.DB, error) {
+	config, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse DSN: %w", err)
+	}
+	config.DefaultQueryExecMode = pgx.QueryExecModeExec
+	return stdlib.OpenDB(*config), nil
+}
 
 // OpenWithCredentials opens a single-connection PortalDB using the given
 // tenant_id as the PostgreSQL username and the JWT token as the password.
@@ -28,7 +51,7 @@ func OpenWithCredentials(tenantID, token string) (*PortalDB, error) {
 	}
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		host, port, tenantID, token, database)
-	sqlDB, err := sql.Open("postgres", dsn)
+	sqlDB, err := openDB(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open per-request database connection: %w", err)
 	}
@@ -65,7 +88,7 @@ func Open() (*PortalDB, error) {
 			host, port, user, password, database)
 	}
 
-	sqlDB, err := sql.Open("postgres", dsn)
+	sqlDB, err := openDB(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
