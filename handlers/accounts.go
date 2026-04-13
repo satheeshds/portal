@@ -1,32 +1,17 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/satheeshds/portal/db"
 	"github.com/satheeshds/portal/models"
+	"github.com/satheeshds/portal/store"
 )
-
-const accountSelectQuery = `SELECT id, name, type, opening_balance, created_at, updated_at,
-	(opening_balance + 
-	 COALESCE((SELECT SUM(amount) FROM transactions WHERE account_id = accounts.id AND type = 'income'), 0) -
-	 COALESCE((SELECT SUM(amount) FROM transactions WHERE account_id = accounts.id AND type = 'expense'), 0)
-	) as balance
-	FROM accounts`
-
-func scanAccount(scanner interface{ Scan(...any) error }) (models.Account, error) {
-	var a models.Account
-	err := scanner.Scan(&a.ID, &a.Name, &a.Type, &a.OpeningBalance, &a.CreatedAt, &a.UpdatedAt, &a.Balance)
-	return a, err
-}
-
-func getAccountByID(d *db.PortalDB, id int) (models.Account, error) {
-	return scanAccount(d.QueryRow(accountSelectQuery+" WHERE accounts.id = ?", id))
-}
 
 // ListAccounts lists all accounts
 // @Summary      List accounts
@@ -38,41 +23,14 @@ func getAccountByID(d *db.PortalDB, id int) (models.Account, error) {
 // @Router       /accounts [get]
 // @Security     BearerAuth
 func ListAccounts(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
+	s := store.New(getDB(r))
 	search := r.URL.Query().Get("search")
-	query := accountSelectQuery
-	var args []any
-	if search != "" {
-		query += " WHERE name LIKE ?"
-		args = append(args, "%"+search+"%")
-	}
-	query += " ORDER BY name"
-	rows, err := d.Query(query, args...)
+	accounts, err := s.ListAccounts(search)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	defer rows.Close()
-
-	var accounts []models.Account
-	rowCount := 0
-	for rows.Next() {
-		var a models.Account
-		if err := rows.Scan(&a.ID, &a.Name, &a.Type, &a.OpeningBalance, &a.CreatedAt, &a.UpdatedAt, &a.Balance); err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		rowCount++
-		accounts = append(accounts, a)
-	}
-	if err := rows.Err(); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	slog.Debug("Accounts", "rowCount", rowCount)
-	if accounts == nil {
-		accounts = []models.Account{}
-	}
+	slog.Debug("Accounts", "rowCount", len(accounts))
 	writeJSON(w, http.StatusOK, accounts)
 }
 
@@ -87,13 +45,15 @@ func ListAccounts(w http.ResponseWriter, r *http.Request) {
 // @Router       /accounts/{id} [get]
 // @Security     BearerAuth
 func GetAccount(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
+	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	var a models.Account
-	err := d.QueryRow(accountSelectQuery+" WHERE id = ?", id).
-		Scan(&a.ID, &a.Name, &a.Type, &a.OpeningBalance, &a.CreatedAt, &a.UpdatedAt, &a.Balance)
+	a, err := s.GetAccount(id)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "account not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "account not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 	writeJSON(w, http.StatusOK, a)
@@ -111,7 +71,7 @@ func GetAccount(w http.ResponseWriter, r *http.Request) {
 // @Router       /accounts [post]
 // @Security     BearerAuth
 func CreateAccount(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
+	s := store.New(getDB(r))
 	var input models.AccountInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON")
@@ -122,17 +82,9 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var id int
-	err := d.QueryRow("INSERT INTO accounts (name, type, opening_balance) VALUES (?, ?, ?) RETURNING id",
-		input.Name, input.Type, input.OpeningBalance).Scan(&id)
+	a, err := s.CreateAccount(input)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	a, err := scanAccount(d.QueryRow(accountSelectQuery+" WHERE accounts.id = ?", id))
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to re-fetch created account: "+err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, a)
@@ -152,7 +104,7 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 // @Router       /accounts/{id} [put]
 // @Security     BearerAuth
 func UpdateAccount(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
+	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	var input models.AccountInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -164,20 +116,13 @@ func UpdateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := d.Exec("UPDATE accounts SET name = ?, type = ?, opening_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-		input.Name, input.Type, input.OpeningBalance, id)
+	a, err := s.UpdateAccount(id, input)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		writeError(w, http.StatusNotFound, "account not found")
-		return
-	}
-
-	a, err := scanAccount(d.QueryRow(accountSelectQuery+" WHERE accounts.id = ?", id))
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to re-fetch updated account: "+err.Error())
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "account not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 	writeJSON(w, http.StatusOK, a)
@@ -194,15 +139,14 @@ func UpdateAccount(w http.ResponseWriter, r *http.Request) {
 // @Router       /accounts/{id} [delete]
 // @Security     BearerAuth
 func DeleteAccount(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
+	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	res, err := d.Exec("DELETE FROM accounts WHERE id = ?", id)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		writeError(w, http.StatusNotFound, "account not found")
+	if err := s.DeleteAccount(id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "account not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"message": "deleted"})

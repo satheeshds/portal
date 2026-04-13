@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/satheeshds/portal/db"
 	"github.com/satheeshds/portal/models"
+	"github.com/satheeshds/portal/store"
 )
 
 const maxSuggestions = 5
@@ -51,9 +51,9 @@ type AutoMatchResult struct {
 // @Router       /transactions/{id}/match-suggestions [get]
 // @Security     BasicAuth
 func SuggestMatches(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
+	s := store.New(getDB(r))
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	txn, err := getTransactionByID(d, txnID)
+	txn, err := s.GetTransaction(txnID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "transaction not found")
 		return
@@ -70,7 +70,7 @@ func SuggestMatches(w http.ResponseWriter, r *http.Request) {
 	}
 	txnSearchText := buildMatchSearchText(txn.Description, txn.Reference)
 
-	suggestions := buildMatchSuggestionsDB(d, txn.Type, txn.Unallocated, txnDate, txnSearchText)
+	suggestions := buildMatchSuggestionsStore(s, txn.Type, txn.Unallocated, txnDate, txnSearchText)
 
 	sort.Slice(suggestions, func(i, j int) bool {
 		return suggestions[i].Confidence > suggestions[j].Confidence
@@ -96,9 +96,9 @@ func SuggestMatches(w http.ResponseWriter, r *http.Request) {
 // @Router       /transactions/{id}/auto-match [post]
 // @Security     BasicAuth
 func AutoMatch(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
+	s := store.New(getDB(r))
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	txn, err := getTransactionByID(d, txnID)
+	txn, err := s.GetTransaction(txnID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "transaction not found")
 		return
@@ -115,7 +115,7 @@ func AutoMatch(w http.ResponseWriter, r *http.Request) {
 	}
 	txnSearchText := buildMatchSearchText(txn.Description, txn.Reference)
 
-	suggestions := buildMatchSuggestionsDB(d, txn.Type, txn.Unallocated, txnDate, txnSearchText)
+	suggestions := buildMatchSuggestionsStore(s, txn.Type, txn.Unallocated, txnDate, txnSearchText)
 
 	// Sort all suggestions by confidence descending so we can always return the best candidate.
 	sort.Slice(suggestions, func(i, j int) bool {
@@ -138,7 +138,6 @@ func AutoMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if bestLinkable == nil {
-		// No linkable candidate — return the best informational suggestion so callers can prompt manually.
 		writeJSON(w, http.StatusOK, AutoMatchResult{Matched: false, Suggestion: bestOverall})
 		return
 	}
@@ -151,24 +150,13 @@ func AutoMatch(w http.ResponseWriter, r *http.Request) {
 
 	// Create the transaction link using the full unallocated amount of the transaction
 	linkAmount := txn.Unallocated
-	var linkID int
-	err = d.QueryRow(`INSERT INTO transaction_documents (transaction_id, document_type, document_id, amount)
-		VALUES (?, ?, ?, ?) RETURNING id`, txnID, bestLinkable.DocumentType, bestLinkable.DocumentID, linkAmount).Scan(&linkID)
+	td, err := s.CreateTransactionDocumentLink(txnID, bestLinkable.DocumentType, bestLinkable.DocumentID, linkAmount)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	updateDocumentStatus(d, bestLinkable.DocumentType, bestLinkable.DocumentID)
-
-	var td models.TransactionDocument
-	err = d.QueryRow("SELECT id, transaction_id, document_type, document_id, amount, created_at FROM transaction_documents WHERE id = ?", linkID).
-		Scan(&td.ID, &td.TransactionID, &td.DocumentType, &td.DocumentID, &td.Amount, &td.CreatedAt)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
+	s.UpdateDocumentStatus(bestLinkable.DocumentType, bestLinkable.DocumentID)
 	writeJSON(w, http.StatusOK, AutoMatchResult{Matched: true, Link: &td, Suggestion: bestLinkable})
 }
 
@@ -247,65 +235,41 @@ func matchDescScore(txnSearchText, docRef, docContext string) (float64, string) 
 // buildMatchSuggestions collects and scores candidates across all document types.
 // It uses the global DB variable for backward compatibility with tests.
 func buildMatchSuggestions(txnType string, amount models.Money, txnDate time.Time, txnSearchText string) []MatchSuggestion {
-	return buildMatchSuggestionsDB(DB, txnType, amount, txnDate, txnSearchText)
+	return buildMatchSuggestionsStore(store.New(DB), txnType, amount, txnDate, txnSearchText)
 }
 
-// buildMatchSuggestionsDB collects and scores candidates using the provided DB connection.
-func buildMatchSuggestionsDB(d *db.PortalDB, txnType string, amount models.Money, txnDate time.Time, txnSearchText string) []MatchSuggestion {
+// buildMatchSuggestionsStore collects and scores candidates using the provided Store.
+func buildMatchSuggestionsStore(s *store.Store, txnType string, amount models.Money, txnDate time.Time, txnSearchText string) []MatchSuggestion {
 	var suggestions []MatchSuggestion
 	switch txnType {
 	case "expense":
-		suggestions = append(suggestions, suggestBills(d, amount, txnDate, txnSearchText)...)
+		suggestions = append(suggestions, suggestBills(s, amount, txnDate, txnSearchText)...)
 	case "income":
-		suggestions = append(suggestions, suggestInvoices(d, amount, txnDate, txnSearchText)...)
-		suggestions = append(suggestions, suggestPayouts(d, amount, txnDate, txnSearchText)...)
+		suggestions = append(suggestions, suggestInvoices(s, amount, txnDate, txnSearchText)...)
+		suggestions = append(suggestions, suggestPayouts(s, amount, txnDate, txnSearchText)...)
 	}
 	// Recurring payments are suggested for both income and expense as informational matches
-	suggestions = append(suggestions, suggestRecurringPayments(d, txnType, amount, txnDate, txnSearchText)...)
+	suggestions = append(suggestions, suggestRecurringPayments(s, txnType, amount, txnDate, txnSearchText)...)
 	return suggestions
 }
 
 // suggestBills returns match suggestions from unallocated bills (for expense transactions).
-func suggestBills(d *db.PortalDB, amount models.Money, txnDate time.Time, txnSearchText string) []MatchSuggestion {
-	if d == nil {
+func suggestBills(s *store.Store, amount models.Money, txnDate time.Time, txnSearchText string) []MatchSuggestion {
+	if s == nil {
 		return nil
 	}
-	rows, err := d.Query(`
-		SELECT b.id, COALESCE(b.bill_number, ''), b.due_date, b.issue_date,
-			b.amount, COALESCE(b.notes, ''), COALESCE(c.name, ''),
-			COALESCE(a.total_allocated, 0)
-		FROM bills b
-		LEFT JOIN contacts c ON b.contact_id = c.id
-		LEFT JOIN (
-			SELECT document_id, SUM(amount) AS total_allocated
-			FROM transaction_documents
-			WHERE document_type = 'bill'
-			GROUP BY document_id
-		) a ON a.document_id = b.id
-		WHERE b.status NOT IN ('paid', 'cancelled')
-		  AND b.amount > COALESCE(a.total_allocated, 0)
-	`)
+	candidates, err := s.SuggestBills(amount, txnDate, txnSearchText)
 	if err != nil {
 		return nil
 	}
-	defer rows.Close()
 
 	var suggestions []MatchSuggestion
-	for rows.Next() {
-		var id int
-		var billNum, notes, contactName string
-		var dueDate, issueDate *string
-		var totalAmt, allocated models.Money
-		if err := rows.Scan(&id, &billNum, &dueDate, &issueDate, &totalAmt, &notes, &contactName, &allocated); err != nil {
-			continue
-		}
-		unallocated := models.Money(int64(totalAmt) - int64(allocated))
+	for _, c := range candidates {
+		unallocated := models.Money(int64(c.Amount) - int64(c.Allocated))
 		if unallocated <= 0 {
 			continue
 		}
 
-		// Determine amount match quality and linkability
-		// A suggestion is linkable only when the transaction can be fully allocated to this document.
 		var confidence float64
 		var reasons []string
 		linkable := amount <= unallocated
@@ -317,29 +281,27 @@ func suggestBills(d *db.PortalDB, amount models.Money, txnDate time.Time, txnSea
 			confidence += 0.3
 			reasons = append(reasons, "partial_amount_match")
 		} else {
-			// amount > unallocated: transaction exceeds document's remaining balance;
-			// still a candidate but needs manual partial allocation.
 			confidence += 0.2
 			reasons = append(reasons, "amount_exceeds_unallocated")
 		}
 
-		docDate := derefDate(dueDate, issueDate)
+		docDate := derefDate(c.DueDate, c.IssueDate)
 		if ds, reason := matchDateScore(txnDate, docDate, 30); ds > 0 {
 			confidence += ds
 			reasons = append(reasons, reason)
 		}
 
-		if ds, reason := matchDescScore(txnSearchText, billNum, contactName+" "+notes); ds > 0 {
+		if ds, reason := matchDescScore(txnSearchText, c.BillNumber, c.ContactName+" "+c.Notes); ds > 0 {
 			confidence += ds
 			reasons = append(reasons, reason)
 		}
 
 		suggestions = append(suggestions, MatchSuggestion{
 			DocumentType: "bill",
-			DocumentID:   id,
-			DocumentRef:  billNum,
+			DocumentID:   c.ID,
+			DocumentRef:  c.BillNumber,
 			DocumentDate: docDate,
-			Amount:       totalAmt,
+			Amount:       c.Amount,
 			Unallocated:  unallocated,
 			Confidence:   math.Min(1.0, math.Round(confidence*100)/100),
 			MatchReasons: reasons,
@@ -350,40 +312,18 @@ func suggestBills(d *db.PortalDB, amount models.Money, txnDate time.Time, txnSea
 }
 
 // suggestInvoices returns match suggestions from unallocated invoices (for income transactions).
-func suggestInvoices(d *db.PortalDB, amount models.Money, txnDate time.Time, txnSearchText string) []MatchSuggestion {
-	if d == nil {
+func suggestInvoices(s *store.Store, amount models.Money, txnDate time.Time, txnSearchText string) []MatchSuggestion {
+	if s == nil {
 		return nil
 	}
-	rows, err := d.Query(`
-		SELECT i.id, COALESCE(i.invoice_number, ''), i.due_date, i.issue_date,
-			i.amount, COALESCE(i.notes, ''), COALESCE(c.name, ''),
-			COALESCE(a.total_allocated, 0)
-		FROM invoices i
-		LEFT JOIN contacts c ON i.contact_id = c.id
-		LEFT JOIN (
-			SELECT document_id, SUM(amount) AS total_allocated
-			FROM transaction_documents
-			WHERE document_type = 'invoice'
-			GROUP BY document_id
-		) a ON a.document_id = i.id
-		WHERE i.status NOT IN ('received', 'cancelled')
-		  AND i.amount > COALESCE(a.total_allocated, 0)
-	`)
+	candidates, err := s.SuggestInvoices(amount, txnDate, txnSearchText)
 	if err != nil {
 		return nil
 	}
-	defer rows.Close()
 
 	var suggestions []MatchSuggestion
-	for rows.Next() {
-		var id int
-		var invoiceNum, notes, contactName string
-		var dueDate, issueDate *string
-		var totalAmt, allocated models.Money
-		if err := rows.Scan(&id, &invoiceNum, &dueDate, &issueDate, &totalAmt, &notes, &contactName, &allocated); err != nil {
-			continue
-		}
-		unallocated := models.Money(int64(totalAmt) - int64(allocated))
+	for _, c := range candidates {
+		unallocated := models.Money(int64(c.Amount) - int64(c.Allocated))
 		if unallocated <= 0 {
 			continue
 		}
@@ -403,23 +343,23 @@ func suggestInvoices(d *db.PortalDB, amount models.Money, txnDate time.Time, txn
 			reasons = append(reasons, "amount_exceeds_unallocated")
 		}
 
-		docDate := derefDate(dueDate, issueDate)
+		docDate := derefDate(c.DueDate, c.IssueDate)
 		if ds, reason := matchDateScore(txnDate, docDate, 30); ds > 0 {
 			confidence += ds
 			reasons = append(reasons, reason)
 		}
 
-		if ds, reason := matchDescScore(txnSearchText, invoiceNum, contactName+" "+notes); ds > 0 {
+		if ds, reason := matchDescScore(txnSearchText, c.InvoiceNumber, c.ContactName+" "+c.Notes); ds > 0 {
 			confidence += ds
 			reasons = append(reasons, reason)
 		}
 
 		suggestions = append(suggestions, MatchSuggestion{
 			DocumentType: "invoice",
-			DocumentID:   id,
-			DocumentRef:  invoiceNum,
+			DocumentID:   c.ID,
+			DocumentRef:  c.InvoiceNumber,
 			DocumentDate: docDate,
-			Amount:       totalAmt,
+			Amount:       c.Amount,
 			Unallocated:  unallocated,
 			Confidence:   math.Min(1.0, math.Round(confidence*100)/100),
 			MatchReasons: reasons,
@@ -430,38 +370,18 @@ func suggestInvoices(d *db.PortalDB, amount models.Money, txnDate time.Time, txn
 }
 
 // suggestPayouts returns match suggestions from unallocated payouts (for income transactions).
-func suggestPayouts(d *db.PortalDB, amount models.Money, txnDate time.Time, txnSearchText string) []MatchSuggestion {
-	if d == nil {
+func suggestPayouts(s *store.Store, amount models.Money, txnDate time.Time, txnSearchText string) []MatchSuggestion {
+	if s == nil {
 		return nil
 	}
-	rows, err := d.Query(`
-		SELECT p.id, COALESCE(p.utr_number, ''), p.settlement_date,
-			p.final_payout_amt, COALESCE(p.outlet_name, ''),
-			COALESCE(a.total_allocated, 0)
-		FROM payouts p
-		LEFT JOIN (
-			SELECT document_id, SUM(amount) AS total_allocated
-			FROM transaction_documents
-			WHERE document_type = 'payout'
-			GROUP BY document_id
-		) a ON a.document_id = p.id
-		WHERE p.final_payout_amt > COALESCE(a.total_allocated, 0)
-	`)
+	candidates, err := s.SuggestPayouts(amount, txnDate, txnSearchText)
 	if err != nil {
 		return nil
 	}
-	defer rows.Close()
 
 	var suggestions []MatchSuggestion
-	for rows.Next() {
-		var id int
-		var utrNumber, outletName string
-		var settlementDate *string
-		var totalAmt, allocated models.Money
-		if err := rows.Scan(&id, &utrNumber, &settlementDate, &totalAmt, &outletName, &allocated); err != nil {
-			continue
-		}
-		unallocated := models.Money(int64(totalAmt) - int64(allocated))
+	for _, c := range candidates {
+		unallocated := models.Money(int64(c.Amount) - int64(c.Allocated))
 		if unallocated <= 0 {
 			continue
 		}
@@ -482,27 +402,25 @@ func suggestPayouts(d *db.PortalDB, amount models.Money, txnDate time.Time, txnS
 		}
 
 		docDate := ""
-		if settlementDate != nil {
-			docDate = *settlementDate
+		if c.SettlementDate != nil {
+			docDate = *c.SettlementDate
 		}
-		// Payouts are expected to settle within 7 days of the bank entry
 		if ds, reason := matchDateScore(txnDate, docDate, 7); ds > 0 {
 			confidence += ds
 			reasons = append(reasons, reason)
 		}
 
-		// UTR number is a strong identifier for payouts
-		if ds, reason := matchDescScore(txnSearchText, utrNumber, outletName); ds > 0 {
+		if ds, reason := matchDescScore(txnSearchText, c.UtrNumber, c.OutletName); ds > 0 {
 			confidence += ds
 			reasons = append(reasons, reason)
 		}
 
 		suggestions = append(suggestions, MatchSuggestion{
 			DocumentType: "payout",
-			DocumentID:   id,
-			DocumentRef:  utrNumber,
+			DocumentID:   c.ID,
+			DocumentRef:  c.UtrNumber,
 			DocumentDate: docDate,
-			Amount:       totalAmt,
+			Amount:       c.Amount,
 			Unallocated:  unallocated,
 			Confidence:   math.Min(1.0, math.Round(confidence*100)/100),
 			MatchReasons: reasons,
@@ -513,43 +431,22 @@ func suggestPayouts(d *db.PortalDB, amount models.Money, txnDate time.Time, txnS
 }
 
 // suggestRecurringPayments returns match suggestions from pending recurring_payment_occurrences.
-// Each suggestion has document_type="recurring_payment_occurrence" and document_id=occurrence.id
-// so that a link is created against the specific occurrence, marking it as paid.
-func suggestRecurringPayments(d *db.PortalDB, txnType string, amount models.Money, txnDate time.Time, txnSearchText string) []MatchSuggestion {
-	if d == nil {
+func suggestRecurringPayments(s *store.Store, txnType string, amount models.Money, txnDate time.Time, txnSearchText string) []MatchSuggestion {
+	if s == nil {
 		return nil
 	}
-	rows, err := d.Query(`
-		SELECT o.id, o.due_date, o.amount,
-			COALESCE(SUM(td.amount), 0) AS allocated,
-			r.name, COALESCE(r.description, ''), COALESCE(r.reference, '')
-		FROM recurring_payment_occurrences o
-		JOIN recurring_payments r ON o.recurring_payment_id = r.id
-		LEFT JOIN transaction_documents td
-			ON td.document_type = 'recurring_payment_occurrence' AND td.document_id = o.id
-		WHERE o.status = 'pending' AND r.status = 'active' AND r.type = ?
-		GROUP BY o.id, o.due_date, o.amount, r.name, r.description, r.reference
-		HAVING COALESCE(SUM(td.amount), 0) < o.amount
-	`, txnType)
+	candidates, err := s.SuggestRecurringPaymentOccurrences(txnType, amount, txnDate)
 	if err != nil {
 		return nil
 	}
-	defer rows.Close()
 
 	var suggestions []MatchSuggestion
-	for rows.Next() {
-		var occID int
-		var dueDate string
-		var occAmount, occAllocated models.Money
-		var name, desc, ref string
-		if err := rows.Scan(&occID, &dueDate, &occAmount, &occAllocated, &name, &desc, &ref); err != nil {
-			continue
-		}
-		occUnallocated := models.Money(int64(occAmount) - int64(occAllocated))
+	for _, c := range candidates {
+		occUnallocated := models.Money(int64(c.Amount) - int64(c.Allocated))
 
 		// Allow a small tolerance of ±2% to accommodate minor variations (taxes, fees, rounding)
-		tolerance := models.Money(int64(occAmount) * 2 / 100)
-		diff := int64(amount) - int64(occAmount)
+		tolerance := models.Money(int64(c.Amount) * 2 / 100)
+		diff := int64(amount) - int64(c.Amount)
 		if diff < 0 {
 			diff = -diff
 		}
@@ -560,7 +457,7 @@ func suggestRecurringPayments(d *db.PortalDB, txnType string, amount models.Mone
 		var confidence float64
 		var reasons []string
 
-		if amount == occAmount {
+		if amount == c.Amount {
 			confidence += 0.5
 			reasons = append(reasons, "exact_amount_match")
 		} else {
@@ -568,22 +465,22 @@ func suggestRecurringPayments(d *db.PortalDB, txnType string, amount models.Mone
 			reasons = append(reasons, "approximate_amount_match")
 		}
 
-		if ds, reason := matchDateScore(txnDate, dueDate, 7); ds > 0 {
+		if ds, reason := matchDateScore(txnDate, c.DueDate, 7); ds > 0 {
 			confidence += ds
 			reasons = append(reasons, reason)
 		}
 
-		if ds, reason := matchDescScore(txnSearchText, ref, name+" "+desc); ds > 0 {
+		if ds, reason := matchDescScore(txnSearchText, c.Reference, c.Name+" "+c.Description); ds > 0 {
 			confidence += ds
 			reasons = append(reasons, reason)
 		}
 
 		suggestions = append(suggestions, MatchSuggestion{
 			DocumentType: "recurring_payment_occurrence",
-			DocumentID:   occID,
-			DocumentRef:  name,
-			DocumentDate: dueDate,
-			Amount:       occAmount,
+			DocumentID:   c.ID,
+			DocumentRef:  c.Name,
+			DocumentDate: c.DueDate,
+			Amount:       c.Amount,
 			Unallocated:  occUnallocated,
 			Confidence:   math.Min(1.0, math.Round(confidence*100)/100),
 			MatchReasons: reasons,
@@ -607,10 +504,10 @@ type TransactionSuggestion struct {
 }
 
 // getDocumentAllocated returns the total amount already allocated to a document via transaction_documents.
-func getDocumentAllocated(d *db.PortalDB, docType string, docID int) models.Money {
-	var allocated models.Money
-	d.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM transaction_documents WHERE document_type = ? AND document_id = ?", docType, docID).Scan(&allocated)
-	return allocated
+// Kept for use in handlers that haven't been fully migrated.
+func getDocumentAllocated(s *store.Store, docType string, docID int) models.Money {
+	v, _ := s.GetDocumentAllocated(docType, docID)
+	return v
 }
 
 // SuggestTransactionsForBill returns ranked bank transaction suggestions for a specific bill.
@@ -624,35 +521,26 @@ func getDocumentAllocated(d *db.PortalDB, docType string, docID int) models.Mone
 // @Router       /bills/{id}/match-suggestions [get]
 // @Security     BasicAuth
 func SuggestTransactionsForBill(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
+	s := store.New(getDB(r))
 	billID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
-	var totalAmt models.Money
-	var billNum, notes string
-	var dueDate, issueDate *string
-	var contactName string
-	err := d.QueryRow(`
-		SELECT b.amount, COALESCE(b.bill_number, ''), b.due_date, b.issue_date,
-			COALESCE(b.notes, ''), COALESCE(c.name, '')
-		FROM bills b
-		LEFT JOIN contacts c ON b.contact_id = c.id
-		WHERE b.id = ?`, billID).Scan(&totalAmt, &billNum, &dueDate, &issueDate, &notes, &contactName)
+	info, err := s.GetBillForMatching(billID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "bill not found")
 		return
 	}
 
-	unallocated := models.Money(int64(totalAmt) - int64(getDocumentAllocated(d, "bill", billID)))
+	unallocated := models.Money(int64(info.Amount) - int64(getDocumentAllocated(s, "bill", billID)))
 	if unallocated <= 0 {
 		writeJSON(w, http.StatusOK, []TransactionSuggestion{})
 		return
 	}
 
-	docDate := derefDate(dueDate, issueDate)
-	docRef := billNum
-	docContext := contactName + " " + notes
+	docDate := derefDate(info.DueDate, info.IssueDate)
+	docRef := info.BillNumber
+	docContext := info.ContactName + " " + info.Notes
 
-	suggestions := suggestTransactionsForDocument(d, "expense", "bill", billID, unallocated, docDate, 30, docRef, docContext)
+	suggestions := suggestTransactionsForDocumentStore(s, "expense", "bill", billID, unallocated, docDate, 30, docRef, docContext)
 	sort.Slice(suggestions, func(i, j int) bool {
 		return suggestions[i].Confidence > suggestions[j].Confidence
 	})
@@ -676,35 +564,26 @@ func SuggestTransactionsForBill(w http.ResponseWriter, r *http.Request) {
 // @Router       /invoices/{id}/match-suggestions [get]
 // @Security     BasicAuth
 func SuggestTransactionsForInvoice(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
+	s := store.New(getDB(r))
 	invoiceID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
-	var totalAmt models.Money
-	var invoiceNum, notes string
-	var dueDate, issueDate *string
-	var contactName string
-	err := d.QueryRow(`
-		SELECT i.amount, COALESCE(i.invoice_number, ''), i.due_date, i.issue_date,
-			COALESCE(i.notes, ''), COALESCE(c.name, '')
-		FROM invoices i
-		LEFT JOIN contacts c ON i.contact_id = c.id
-		WHERE i.id = ?`, invoiceID).Scan(&totalAmt, &invoiceNum, &dueDate, &issueDate, &notes, &contactName)
+	info, err := s.GetInvoiceForMatching(invoiceID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "invoice not found")
 		return
 	}
 
-	unallocated := models.Money(int64(totalAmt) - int64(getDocumentAllocated(d, "invoice", invoiceID)))
+	unallocated := models.Money(int64(info.Amount) - int64(getDocumentAllocated(s, "invoice", invoiceID)))
 	if unallocated <= 0 {
 		writeJSON(w, http.StatusOK, []TransactionSuggestion{})
 		return
 	}
 
-	docDate := derefDate(dueDate, issueDate)
-	docRef := invoiceNum
-	docContext := contactName + " " + notes
+	docDate := derefDate(info.DueDate, info.IssueDate)
+	docRef := info.InvoiceNumber
+	docContext := info.ContactName + " " + info.Notes
 
-	suggestions := suggestTransactionsForDocument(d, "income", "invoice", invoiceID, unallocated, docDate, 30, docRef, docContext)
+	suggestions := suggestTransactionsForDocumentStore(s, "income", "invoice", invoiceID, unallocated, docDate, 30, docRef, docContext)
 	sort.Slice(suggestions, func(i, j int) bool {
 		return suggestions[i].Confidence > suggestions[j].Confidence
 	})
@@ -728,33 +607,27 @@ func SuggestTransactionsForInvoice(w http.ResponseWriter, r *http.Request) {
 // @Router       /payouts/{id}/match-suggestions [get]
 // @Security     BasicAuth
 func SuggestTransactionsForPayout(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
+	s := store.New(getDB(r))
 	payoutID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
-	var totalAmt models.Money
-	var utrNumber, outletName string
-	var settlementDate *string
-	err := d.QueryRow(`
-		SELECT p.final_payout_amt, COALESCE(p.utr_number, ''), p.settlement_date, COALESCE(p.outlet_name, '')
-		FROM payouts p
-		WHERE p.id = ?`, payoutID).Scan(&totalAmt, &utrNumber, &settlementDate, &outletName)
+	info, err := s.GetPayoutForMatching(payoutID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "payout not found")
 		return
 	}
 
-	unallocated := models.Money(int64(totalAmt) - int64(getDocumentAllocated(d, "payout", payoutID)))
+	unallocated := models.Money(int64(info.Amount) - int64(getDocumentAllocated(s, "payout", payoutID)))
 	if unallocated <= 0 {
 		writeJSON(w, http.StatusOK, []TransactionSuggestion{})
 		return
 	}
 
 	docDate := ""
-	if settlementDate != nil {
-		docDate = *settlementDate
+	if info.SettlementDate != nil {
+		docDate = *info.SettlementDate
 	}
 
-	suggestions := suggestTransactionsForDocument(d, "income", "payout", payoutID, unallocated, docDate, 7, utrNumber, outletName)
+	suggestions := suggestTransactionsForDocumentStore(s, "income", "payout", payoutID, unallocated, docDate, 7, info.UtrNumber, info.OutletName)
 	sort.Slice(suggestions, func(i, j int) bool {
 		return suggestions[i].Confidence > suggestions[j].Confidence
 	})
@@ -767,37 +640,17 @@ func SuggestTransactionsForPayout(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, suggestions)
 }
 
-// suggestTransactionsForDocument queries expense/income transactions that could match the given document,
-// excluding transactions already linked to this document.
-func suggestTransactionsForDocument(d *db.PortalDB, txnType, docType string, docID int, docUnallocated models.Money,
+// suggestTransactionsForDocumentStore queries transactions that could match the given document using the store.
+func suggestTransactionsForDocumentStore(s *store.Store, txnType, docType string, docID int, docUnallocated models.Money,
 	docDate string, windowDays int, docRef, docContext string) []TransactionSuggestion {
-	if d == nil {
+	if s == nil {
 		return nil
 	}
 
-	// Only consider transactions with remaining unallocated balance and not already linked to this document
-	rows, err := d.Query(`
-		SELECT t.id, t.amount, t.transaction_date, COALESCE(t.description, ''), COALESCE(t.reference, ''),
-			COALESCE(a.total_allocated, 0)
-		FROM transactions t
-		LEFT JOIN (
-			SELECT transaction_id, SUM(amount) AS total_allocated
-			FROM transaction_documents
-			GROUP BY transaction_id
-		) a ON a.transaction_id = t.id
-		WHERE t.type = ?
-		  AND t.amount > COALESCE(a.total_allocated, 0)
-		  AND NOT EXISTS (
-			SELECT 1 FROM transaction_documents td2
-			WHERE td2.transaction_id = t.id
-			  AND td2.document_type = ?
-			  AND td2.document_id = ?
-		  )
-	`, txnType, docType, docID)
+	candidates, err := s.SuggestTransactionsForDocument(txnType, docType, docID)
 	if err != nil {
 		return nil
 	}
-	defer rows.Close()
 
 	var docDate_ time.Time
 	if docDate != "" {
@@ -805,27 +658,18 @@ func suggestTransactionsForDocument(d *db.PortalDB, txnType, docType string, doc
 	}
 
 	var suggestions []TransactionSuggestion
-	for rows.Next() {
-		var id int
-		var txnAmt, txnAllocated models.Money
-		var txnDatePtr *string
-		var desc, ref string
-		if err := rows.Scan(&id, &txnAmt, &txnDatePtr, &desc, &ref, &txnAllocated); err != nil {
-			continue
-		}
+	for _, c := range candidates {
 		txnDateStr := ""
-		if txnDatePtr != nil {
-			txnDateStr = *txnDatePtr
+		if c.Date != nil {
+			txnDateStr = *c.Date
 		}
-		txnUnallocated := models.Money(int64(txnAmt) - int64(txnAllocated))
+		txnUnallocated := models.Money(int64(c.Amount) - int64(c.Allocated))
 		if txnUnallocated <= 0 {
 			continue
 		}
 
 		var confidence float64
 		var reasons []string
-		// A link can always be created for min(txnUnallocated, docUnallocated) paise,
-		// so linkable is always true as long as both sides have remaining balance.
 		linkable := true
 
 		if txnUnallocated == docUnallocated {
@@ -839,9 +683,6 @@ func suggestTransactionsForDocument(d *db.PortalDB, txnType, docType string, doc
 			reasons = append(reasons, "amount_exceeds_unallocated")
 		}
 
-		// Date proximity: compare transaction date to document date.
-		// Dates within windowDays receive a "date_proximity" score; dates between windowDays
-		// and staleDateWindow days receive a reduced "stale_date_proximity" score.
 		if !docDate_.IsZero() && txnDateStr != "" {
 			txnDate, err := time.Parse("2006-01-02", txnDateStr)
 			if err == nil {
@@ -852,19 +693,18 @@ func suggestTransactionsForDocument(d *db.PortalDB, txnType, docType string, doc
 			}
 		}
 
-		// Description / reference similarity
-		txnSearchText := strings.ToLower(desc + " " + ref)
+		txnSearchText := strings.ToLower(c.Description + " " + c.Reference)
 		if ds, reason := matchDescScore(txnSearchText, docRef, docContext); ds > 0 {
 			confidence += ds
 			reasons = append(reasons, reason)
 		}
 
 		suggestions = append(suggestions, TransactionSuggestion{
-			TransactionID:   id,
+			TransactionID:   c.ID,
 			TransactionDate: txnDateStr,
-			Description:     desc,
-			Reference:       ref,
-			Amount:          txnAmt,
+			Description:     c.Description,
+			Reference:       c.Reference,
+			Amount:          c.Amount,
 			Unallocated:     txnUnallocated,
 			Confidence:      math.Min(1.0, math.Round(confidence*100)/100),
 			MatchReasons:    reasons,
@@ -885,73 +725,36 @@ func suggestTransactionsForDocument(d *db.PortalDB, txnType, docType string, doc
 // @Router       /recurring-payments/{id}/match-suggestions [get]
 // @Security     BasicAuth
 func SuggestTransactionsForRecurringPayment(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
+	s := store.New(getDB(r))
 	rpID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
-	if d == nil {
-		writeJSON(w, http.StatusOK, []TransactionSuggestion{})
-		return
-	}
-
-	var rpAmount models.Money
-	var rpType, name, desc, ref string
-	var nextDueDate *string
-	err := d.QueryRow(`
-		SELECT r.amount, r.type, r.name, COALESCE(r.description, ''), COALESCE(r.reference, ''), r.next_due_date
-		FROM recurring_payments r
-		WHERE r.id = ?`, rpID).Scan(&rpAmount, &rpType, &name, &desc, &ref, &nextDueDate)
+	info, err := s.GetRecurringPaymentForMatching(rpID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "recurring payment not found")
 		return
 	}
 
 	docDate := ""
-	if nextDueDate != nil {
-		docDate = *nextDueDate
+	if info.NextDueDate != nil {
+		docDate = *info.NextDueDate
 	}
 
-	// Query matching transactions by type, excluding those already linked to this recurring payment
-	rows, err := d.Query(`
-		SELECT t.id, t.amount, t.transaction_date, COALESCE(t.description, ''), COALESCE(t.reference, ''),
-			COALESCE((SELECT SUM(td.amount) FROM transaction_documents td WHERE td.transaction_id = t.id), 0)
-		FROM transactions t
-		WHERE t.type = ?
-		  AND NOT EXISTS (
-			SELECT 1 FROM transaction_documents td2
-			WHERE td2.transaction_id = t.id
-			  AND td2.document_type = 'recurring_payment_occurrence'
-			  AND EXISTS (
-			  	SELECT 1 FROM recurring_payment_occurrences rpo
-			  	WHERE rpo.id = td2.document_id AND rpo.recurring_payment_id = ?
-			  )
-		  )
-	`, rpType, rpID)
+	candidates, err := s.SuggestTransactionsForRecurringPayment(info.Type, rpID)
 	if err != nil {
 		writeJSON(w, http.StatusOK, []TransactionSuggestion{})
 		return
 	}
-	defer rows.Close()
 
 	var docDate_ time.Time
 	if docDate != "" {
 		docDate_, _ = time.Parse("2006-01-02", docDate)
 	}
 
-	// ±2% tolerance on the recurring payment amount
-	tolerance := models.Money(int64(rpAmount) * 2 / 100)
+	tolerance := models.Money(int64(info.Amount) * 2 / 100)
 
 	var suggestions []TransactionSuggestion
-	for rows.Next() {
-		var id int
-		var txnAmt, txnAllocated models.Money
-		var txnDatePtr *string
-		var txnDesc, txnRef string
-		if err := rows.Scan(&id, &txnAmt, &txnDatePtr, &txnDesc, &txnRef, &txnAllocated); err != nil {
-			continue
-		}
-
-		// Apply ±2% amount tolerance (same as forward direction for recurring payments)
-		diff := int64(txnAmt) - int64(rpAmount)
+	for _, c := range candidates {
+		diff := int64(c.Amount) - int64(info.Amount)
 		if diff < 0 {
 			diff = -diff
 		}
@@ -960,14 +763,14 @@ func SuggestTransactionsForRecurringPayment(w http.ResponseWriter, r *http.Reque
 		}
 
 		txnDateStr := ""
-		if txnDatePtr != nil {
-			txnDateStr = *txnDatePtr
+		if c.Date != nil {
+			txnDateStr = *c.Date
 		}
 
 		var confidence float64
 		var reasons []string
 
-		if txnAmt == rpAmount {
+		if c.Amount == info.Amount {
 			confidence += 0.5
 			reasons = append(reasons, "exact_amount_match")
 		} else {
@@ -975,9 +778,6 @@ func SuggestTransactionsForRecurringPayment(w http.ResponseWriter, r *http.Reque
 			reasons = append(reasons, "approximate_amount_match")
 		}
 
-		// Date proximity to next_due_date (7-day window, same as forward direction).
-		// Dates within 7 days receive a "date_proximity" score; dates between 7 days
-		// and staleDateWindow days receive a reduced "stale_date_proximity" score.
 		if !docDate_.IsZero() && txnDateStr != "" {
 			txnDate, err := time.Parse("2006-01-02", txnDateStr)
 			if err == nil {
@@ -988,20 +788,20 @@ func SuggestTransactionsForRecurringPayment(w http.ResponseWriter, r *http.Reque
 			}
 		}
 
-		txnSearchText := strings.ToLower(txnDesc + " " + txnRef)
-		if ds, reason := matchDescScore(txnSearchText, ref, name+" "+desc); ds > 0 {
+		txnSearchText := strings.ToLower(c.Description + " " + c.Reference)
+		if ds, reason := matchDescScore(txnSearchText, info.Reference, info.Name+" "+info.Description); ds > 0 {
 			confidence += ds
 			reasons = append(reasons, reason)
 		}
 
-		txnUnallocated := models.Money(int64(txnAmt) - int64(txnAllocated))
+		txnUnallocated := models.Money(int64(c.Amount) - int64(c.Allocated))
 
 		suggestions = append(suggestions, TransactionSuggestion{
-			TransactionID:   id,
+			TransactionID:   c.ID,
 			TransactionDate: txnDateStr,
-			Description:     txnDesc,
-			Reference:       txnRef,
-			Amount:          txnAmt,
+			Description:     c.Description,
+			Reference:       c.Reference,
+			Amount:          c.Amount,
 			Unallocated:     txnUnallocated,
 			Confidence:      math.Min(1.0, math.Round(confidence*100)/100),
 			MatchReasons:    reasons,

@@ -1,13 +1,15 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/satheeshds/portal/models"
+	"github.com/satheeshds/portal/store"
 )
 
 const contactSelectQuery = `SELECT id, name, type, email, phone, created_at, updated_at,
@@ -41,45 +43,13 @@ func scanContact(scanner interface{ Scan(...any) error }) (models.Contact, error
 // @Router       /contacts [get]
 // @Security     BasicAuth
 func ListContacts(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
-	query := contactSelectQuery
-	var args []any
-	var conditions []string
-
-	if t := r.URL.Query().Get("type"); t != "" {
-		conditions = append(conditions, "type = ?")
-		args = append(args, t)
-	}
-
-	if search := r.URL.Query().Get("search"); search != "" {
-		conditions = append(conditions, "(name LIKE ? OR email LIKE ? OR phone LIKE ?)")
-		s := "%" + search + "%"
-		args = append(args, s, s, s)
-	}
-
-	if len(conditions) > 0 {
-		query += " WHERE " + strings.Join(conditions, " AND ")
-	}
-	query += " ORDER BY name"
-
-	rows, err := d.Query(query, args...)
+	s := store.New(getDB(r))
+	typeFilter := r.URL.Query().Get("type")
+	search := r.URL.Query().Get("search")
+	contacts, err := s.ListContacts(typeFilter, search)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
-	}
-	defer rows.Close()
-
-	var contacts []models.Contact
-	for rows.Next() {
-		c, err := scanContact(rows)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		contacts = append(contacts, c)
-	}
-	if contacts == nil {
-		contacts = []models.Contact{}
 	}
 	writeJSON(w, http.StatusOK, contacts)
 }
@@ -95,11 +65,15 @@ func ListContacts(w http.ResponseWriter, r *http.Request) {
 // @Router       /contacts/{id} [get]
 // @Security     BasicAuth
 func GetContact(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
+	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	c, err := scanContact(d.QueryRow(contactSelectQuery+" WHERE id = ?", id))
+	c, err := s.GetContact(id)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "contact not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "contact not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 	writeJSON(w, http.StatusOK, c)
@@ -117,7 +91,7 @@ func GetContact(w http.ResponseWriter, r *http.Request) {
 // @Router       /contacts [post]
 // @Security     BasicAuth
 func CreateContact(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
+	s := store.New(getDB(r))
 	var input models.ContactInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON")
@@ -127,18 +101,9 @@ func CreateContact(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, msg)
 		return
 	}
-
-	var id int
-	err := d.QueryRow("INSERT INTO contacts (name, type, email, phone) VALUES (?, ?, ?, ?) RETURNING id",
-		input.Name, input.Type, input.Email, input.Phone).Scan(&id)
+	c, err := s.CreateContact(input)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	c, err := scanContact(d.QueryRow(contactSelectQuery+" WHERE id = ?", id))
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to re-fetch created contact: "+err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, c)
@@ -158,7 +123,7 @@ func CreateContact(w http.ResponseWriter, r *http.Request) {
 // @Router       /contacts/{id} [put]
 // @Security     BasicAuth
 func UpdateContact(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
+	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
 	var input models.ContactInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -169,21 +134,13 @@ func UpdateContact(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, msg)
 		return
 	}
-
-	res, err := d.Exec("UPDATE contacts SET name = ?, type = ?, email = ?, phone = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-		input.Name, input.Type, input.Email, input.Phone, id)
+	c, err := s.UpdateContact(id, input)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		writeError(w, http.StatusNotFound, "contact not found")
-		return
-	}
-
-	c, err := scanContact(d.QueryRow(contactSelectQuery+" WHERE id = ?", id))
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to re-fetch updated contact: "+err.Error())
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "contact not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 	writeJSON(w, http.StatusOK, c)
@@ -200,15 +157,14 @@ func UpdateContact(w http.ResponseWriter, r *http.Request) {
 // @Router       /contacts/{id} [delete]
 // @Security     BasicAuth
 func DeleteContact(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
+	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	res, err := d.Exec("DELETE FROM contacts WHERE id = ?", id)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		writeError(w, http.StatusNotFound, "contact not found")
+	if err := s.DeleteContact(id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "contact not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"message": "deleted"})
