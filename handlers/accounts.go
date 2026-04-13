@@ -12,10 +12,11 @@ import (
 )
 
 const accountSelectQuery = `SELECT id, name, type, opening_balance, created_at, updated_at,
-	(opening_balance + 
-	 COALESCE((SELECT SUM(amount) FROM transactions WHERE account_id = accounts.id AND type = 'income'), 0) -
-	 COALESCE((SELECT SUM(amount) FROM transactions WHERE account_id = accounts.id AND type = 'expense'), 0)
-	) as balance
+	CAST(
+		opening_balance +
+		COALESCE((SELECT SUM(amount) FROM transactions WHERE account_id = accounts.id AND type = 'income'), CAST(0 AS INTEGER)) -
+		COALESCE((SELECT SUM(amount) FROM transactions WHERE account_id = accounts.id AND type = 'expense'), CAST(0 AS INTEGER))
+	AS BIGINT) as balance
 	FROM accounts`
 
 func scanAccount(scanner interface{ Scan(...any) error }) (models.Account, error) {

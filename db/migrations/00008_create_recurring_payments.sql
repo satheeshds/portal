@@ -1,6 +1,7 @@
 -- +goose Up
+CREATE SEQUENCE IF NOT EXISTS recurring_payments_id_seq START 1;
 CREATE TABLE IF NOT EXISTS recurring_payments (
-    id INTEGER NOT NULL,
+    id INTEGER NOT NULL DEFAULT nextval('recurring_payments_id_seq'),
     name TEXT NOT NULL,
     type TEXT NOT NULL,
     amount INTEGER NOT NULL,
@@ -15,9 +16,10 @@ CREATE TABLE IF NOT EXISTS recurring_payments (
     status TEXT NOT NULL DEFAULT 'active',
     description TEXT,
     reference TEXT,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- +goose Down
 DROP TABLE IF EXISTS recurring_payments;
+DROP SEQUENCE IF EXISTS recurring_payments_id_seq;

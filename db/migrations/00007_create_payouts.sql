@@ -1,6 +1,7 @@
 -- +goose Up
+CREATE SEQUENCE IF NOT EXISTS payouts_id_seq START 1;
 CREATE TABLE IF NOT EXISTS payouts (
-    id INTEGER NOT NULL,
+    id INTEGER NOT NULL DEFAULT nextval('payouts_id_seq'),
     outlet_name TEXT NOT NULL,
     platform TEXT NOT NULL,
     period_start DATE,
@@ -14,8 +15,9 @@ CREATE TABLE IF NOT EXISTS payouts (
     marketing_ads_amt INTEGER NOT NULL DEFAULT 0,
     final_payout_amt INTEGER NOT NULL DEFAULT 0,
     utr_number TEXT,
-    created_at TIMESTAMP NOT NULL
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- +goose Down
 DROP TABLE IF EXISTS payouts;
+DROP SEQUENCE IF EXISTS payouts_id_seq;

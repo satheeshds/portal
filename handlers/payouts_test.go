@@ -26,7 +26,7 @@ func setupTestRouter(t *testing.T) (*chi.Mux, func()) {
 		t.Fatalf("open database: %v", err)
 	}
 	database := db.WrapDB(rawDB)
-	if err := db.MigrateDB(database); err != nil {
+	if err := db.MigrateTestDB(database); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 
