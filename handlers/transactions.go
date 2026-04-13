@@ -182,8 +182,7 @@ func ListTransactionLinks(w http.ResponseWriter, r *http.Request) {
 // @Router       /transactions/{id}/links [post]
 // @Security     BasicAuth
 func CreateTransactionLink(w http.ResponseWriter, r *http.Request) {
-	d := getDB(r)
-	s := store.New(d)
+	s := store.New(getDB(r))
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))
 
 	var input models.TransactionDocumentInput
@@ -196,53 +195,27 @@ func CreateTransactionLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check transaction exists and get its amount
-	var txnAmount models.Money
-	err := d.QueryRow("SELECT amount FROM transactions WHERE id = ?", txnID).Scan(&txnAmount)
+	// Check transaction exists and get its unallocated balance
+	txn, err := s.GetTransaction(txnID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "transaction not found")
 		return
 	}
-
-	// Check transaction unallocated balance
-	var txnAllocated models.Money
-	d.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM transaction_documents WHERE transaction_id = ?", txnID).Scan(&txnAllocated)
-	txnUnallocated := models.Money(int64(txnAmount) - int64(txnAllocated))
-	if input.Amount > txnUnallocated {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("transaction only has %d paise unallocated (requested %d)", txnUnallocated, input.Amount))
+	if input.Amount > txn.Unallocated {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("transaction only has %d paise unallocated (requested %d)", txn.Unallocated, input.Amount))
 		return
 	}
 
-	// Check document exists and get its amount
-	var docAmount models.Money
-	var docTable, amountField string
-	switch input.DocumentType {
-	case "bill":
-		docTable = "bills"
-		amountField = "amount"
-	case "invoice":
-		docTable = "invoices"
-		amountField = "amount"
-	case "payout":
-		docTable = "payouts"
-		amountField = "final_payout_amt"
-	case "recurring_payment_occurrence":
-		docTable = "recurring_payment_occurrences"
-		amountField = "amount"
-	default:
-		writeError(w, http.StatusBadRequest, "invalid document type")
-		return
-	}
-	err = d.QueryRow(fmt.Sprintf("SELECT %s FROM %s WHERE id = ?", amountField, docTable), input.DocumentID).Scan(&docAmount)
+	// Check document exists and get its unallocated balance
+	docAmount, docAllocated, err := s.GetDocumentAmountAndAllocated(input.DocumentType, input.DocumentID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, fmt.Sprintf("%s not found", input.DocumentType))
+		if input.DocumentType == "bill" || input.DocumentType == "invoice" || input.DocumentType == "payout" || input.DocumentType == "recurring_payment_occurrence" {
+			writeError(w, http.StatusNotFound, fmt.Sprintf("%s not found", input.DocumentType))
+		} else {
+			writeError(w, http.StatusBadRequest, "invalid document type")
+		}
 		return
 	}
-
-	// Check document unallocated balance
-	var docAllocated models.Money
-	d.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM transaction_documents WHERE document_type = ? AND document_id = ?",
-		input.DocumentType, input.DocumentID).Scan(&docAllocated)
 	docUnallocated := models.Money(int64(docAmount) - int64(docAllocated))
 	if input.Amount > docUnallocated {
 		writeError(w, http.StatusBadRequest, fmt.Sprintf("%s only has %d paise unallocated (requested %d)", input.DocumentType, docUnallocated, input.Amount))

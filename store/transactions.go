@@ -242,6 +242,32 @@ func (s *Store) ListTransactionLinks(txnID int) ([]models.TransactionDocument, e
 	return docs, nil
 }
 
+// GetDocumentAmountAndAllocated returns the total amount and already-allocated amount of a document.
+// docType must be one of "bill", "invoice", "payout", or "recurring_payment_occurrence".
+// Returns sql.ErrNoRows if the document does not exist.
+func (s *Store) GetDocumentAmountAndAllocated(docType string, docID int) (amount, allocated models.Money, err error) {
+	var table, amountField string
+	switch docType {
+	case "bill":
+		table, amountField = "bills", "amount"
+	case "invoice":
+		table, amountField = "invoices", "amount"
+	case "payout":
+		table, amountField = "payouts", "final_payout_amt"
+	case "recurring_payment_occurrence":
+		table, amountField = "recurring_payment_occurrences", "amount"
+	default:
+		return 0, 0, fmt.Errorf("unsupported document type: %s", docType)
+	}
+	err = s.db.QueryRow(fmt.Sprintf("SELECT %s FROM %s WHERE id = ?", amountField, table), docID).Scan(&amount)
+	if err != nil {
+		return 0, 0, err
+	}
+	s.db.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM transaction_documents WHERE document_type = ? AND document_id = ?",
+		docType, docID).Scan(&allocated)
+	return amount, allocated, nil
+}
+
 // CreateTransactionLink creates a link between a transaction and a document and returns it.
 func (s *Store) CreateTransactionLink(txnID int, input models.TransactionDocumentInput) (models.TransactionDocument, error) {
 	var id int
