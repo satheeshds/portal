@@ -11,10 +11,11 @@ COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
-# Generate Swagger docs (Cached unless models/handlers/main change)
+# Generate Swagger docs (Cached unless models/handlers/store/main change)
 COPY main.go ./
 COPY handlers/ ./handlers/
 COPY models/ ./models/
+COPY store/ ./store/
 RUN swag init -g main.go --dir . --output ./docs
 
 # Copy remaining source (static, etc)

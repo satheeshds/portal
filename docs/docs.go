@@ -1626,7 +1626,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/handlers.dashboardData"
+                                            "$ref": "#/definitions/store.DashboardData"
                                         }
                                     }
                                 }
@@ -4224,11 +4224,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "occurrence_due_date": {
-                    "description": "the billing period this transaction covers",
                     "type": "string"
                 },
                 "occurrence_status": {
-                    "description": "pending, paid, or skipped",
                     "type": "string"
                 },
                 "reference": {
@@ -4284,52 +4282,6 @@ const docTemplate = `{
                 },
                 "unallocated": {
                     "description": "unallocated amount remaining",
-                    "type": "integer"
-                }
-            }
-        },
-        "handlers.dashboardData": {
-            "type": "object",
-            "properties": {
-                "bills_payable": {
-                    "type": "integer"
-                },
-                "invoices_receivable": {
-                    "type": "integer"
-                },
-                "overdue_bills": {
-                    "type": "integer"
-                },
-                "overdue_invoices": {
-                    "type": "integer"
-                },
-                "payouts_received": {
-                    "description": "sum of final_payout_amt",
-                    "type": "integer"
-                },
-                "recent_transactions": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "additionalProperties": {}
-                    }
-                },
-                "total_accounts": {
-                    "type": "integer"
-                },
-                "total_bills": {
-                    "type": "integer"
-                },
-                "total_contacts": {
-                    "type": "integer"
-                },
-                "total_invoices": {
-                    "type": "integer"
-                },
-                "total_payouts": {
-                    "type": "integer"
-                },
-                "total_transactions": {
                     "type": "integer"
                 }
             }
@@ -5121,6 +5073,51 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "string"
+                }
+            }
+        },
+        "store.DashboardData": {
+            "type": "object",
+            "properties": {
+                "bills_payable": {
+                    "type": "integer"
+                },
+                "invoices_receivable": {
+                    "type": "integer"
+                },
+                "overdue_bills": {
+                    "type": "integer"
+                },
+                "overdue_invoices": {
+                    "type": "integer"
+                },
+                "payouts_received": {
+                    "type": "integer"
+                },
+                "recent_transactions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    }
+                },
+                "total_accounts": {
+                    "type": "integer"
+                },
+                "total_bills": {
+                    "type": "integer"
+                },
+                "total_contacts": {
+                    "type": "integer"
+                },
+                "total_invoices": {
+                    "type": "integer"
+                },
+                "total_payouts": {
+                    "type": "integer"
+                },
+                "total_transactions": {
+                    "type": "integer"
                 }
             }
         }
