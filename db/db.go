@@ -1,7 +1,6 @@
 package db
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -11,35 +10,24 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 )
 
-// openDB parses the DSN, configures pgx to use the simple query protocol
-// (text encoding), and returns a *sql.DB. Simple protocol avoids binary
-// type-mismatch errors on PostgreSQL-compatible gateways that do not fully
-// implement the extended query protocol.
+// openDB parses the DSN, configures pgx to use QueryExecModeExec (extended
+// query protocol without a Describe round-trip), and returns a *sql.DB.
 //
-// The AfterConnect hook explicitly sets standard_conforming_strings and
-// client_encoding via the low-level pgconn layer (bypassing pgx's own
-// safety check). This causes the server to send back ParameterStatus messages
-// that pgconn stores, satisfying pgx's check before any application query runs.
-// This handles gateways that do not advertise these settings in their startup
-// ParameterStatus messages.
+// QueryExecModeExec sends Parse→Bind→Execute→Sync for every query.  This
+// avoids two problems that arise with the Nexus gateway:
+//   - No Describe step means no binary-format OID negotiation, eliminating
+//     the binary type-mismatch errors seen with the default cached-statement
+//     mode.
+//   - No simple-query protocol means pgx never checks for
+//     standard_conforming_strings in the server's ParameterStatus map, which
+//     the gateway does not advertise.
 func openDB(dsn string) (*sql.DB, error) {
 	config, err := pgx.ParseConfig(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse DSN: %w", err)
 	}
-	config.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
-
-	afterConnect := func(ctx context.Context, conn *pgx.Conn) error {
-		// Use the pgconn layer directly so the SET commands are sent via the
-		// simple query protocol without triggering pgx's own
-		// standard_conforming_strings guard (which hasn't been satisfied yet).
-		// The server's ParameterStatus responses update pgconn's internal map,
-		// allowing subsequent pgx simple-protocol queries to pass the check.
-		_, err := conn.PgConn().Exec(ctx, "SET standard_conforming_strings=on; SET client_encoding='UTF8'").ReadAll()
-		return err
-	}
-
-	return stdlib.OpenDB(*config, stdlib.OptionAfterConnect(afterConnect)), nil
+	config.DefaultQueryExecMode = pgx.QueryExecModeExec
+	return stdlib.OpenDB(*config), nil
 }
 
 // OpenWithCredentials opens a single-connection PortalDB using the given
