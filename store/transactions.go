@@ -76,6 +76,9 @@ func (s *Store) ListTransactions(txnType, accountID, from, to string) ([]models.
 		}
 		txns = append(txns, t)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	if txns == nil {
 		txns = []models.Transaction{}
 	}
@@ -235,6 +238,9 @@ func (s *Store) ListTransactionLinks(txnID int) ([]models.TransactionDocument, e
 			return nil, err
 		}
 		docs = append(docs, td)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	if docs == nil {
 		docs = []models.TransactionDocument{}
