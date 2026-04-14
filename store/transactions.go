@@ -263,8 +263,11 @@ func (s *Store) GetDocumentAmountAndAllocated(docType string, docID int) (amount
 	if err != nil {
 		return 0, 0, err
 	}
-	s.db.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM transaction_documents WHERE document_type = ? AND document_id = ?",
+	err = s.db.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM transaction_documents WHERE document_type = ? AND document_id = ?",
 		docType, docID).Scan(&allocated)
+	if err != nil {
+		return 0, 0, err
+	}
 	return amount, allocated, nil
 }
 
