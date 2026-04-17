@@ -5,6 +5,7 @@ TAG ?= latest
 DOCKER ?= docker
 COMPOSE ?= docker compose
 ENV_FILE ?= .env
+COMMIT_SHA ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 
 export DOCKER_BUILDKIT ?= 1
 
@@ -16,10 +17,10 @@ help: ## List available targets
 image: image-portal image-platform ## Build Docker images for both portal and platform
 
 image-portal: ## Build the portal Docker image
-	$(DOCKER) build -t $(IMAGE):$(TAG) .
+	$(DOCKER) build --build-arg COMMIT_SHA=$(COMMIT_SHA) -t $(IMAGE):$(TAG) .
 
 image-platform: ## Build the platform Docker image
-	$(DOCKER) build -t $(PLATFORM_IMAGE):$(TAG) -f platform/Dockerfile .
+	$(DOCKER) build --build-arg COMMIT_SHA=$(COMMIT_SHA) -t $(PLATFORM_IMAGE):$(TAG) -f platform/Dockerfile .
 
 push: ## Push the Docker image
 	$(DOCKER) push $(IMAGE):$(TAG)
