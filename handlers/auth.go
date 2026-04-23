@@ -75,6 +75,11 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
+	// Disable connection reuse for this long-running request (1m 40s).
+	// This prevents EOF errors caused by intermediate proxies or connection pools
+	// dropping the connection during the long wait.
+	httpReq.Close = true
+
 	resp, err := nexusClient.Do(httpReq)
 	if err != nil {
 		slog.Error("nexus register request failed", "error", err)
