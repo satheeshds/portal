@@ -25,8 +25,11 @@ var nexusClient = &http.Client{}
 var nexusRegisterClient = &http.Client{
 	Transport: &http.Transport{
 		DisableKeepAlives: true,
-		// A non-nil TLSNextProto map suppresses the automatic HTTP/2 upgrade so that
-		// DisableKeepAlives applies to TLS connections as well.
+		// Setting TLSNextProto to a non-nil empty map is the documented Go mechanism
+		// for disabling HTTP/2 (see net/http Transport.TLSNextProto docs: "if not nil,
+		// HTTP/2 support is not enabled automatically"). ForceAttemptHTTP2=false is the
+		// default and only affects transports that use custom dial functions; it does not
+		// disable HTTP/2 on a standard transport.
 		TLSNextProto: make(map[string]func(string, *tls.Conn) http.RoundTripper),
 	},
 }
