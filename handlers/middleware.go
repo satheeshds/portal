@@ -116,10 +116,16 @@ func BasicAuth(next http.Handler) http.Handler {
 }
 
 // BearerAuth is middleware that enforces Bearer token authentication.
-// When NEXUS_CONTROL_URL is set it validates the token against the Nexus gateway;
-// otherwise it simply requires a non-empty Bearer token to be present.
-// If neither NEXUS_CONTROL_URL nor AUTH_USER/AUTH_PASS are configured the middleware
-// falls back to the unauthenticated (open) behaviour and logs a warning.
+// When NEXUS_CONTROL_URL is set it supports two authentication methods:
+//  1. JWT Bearer token – the existing user login flow.
+//  2. HTTP Basic Auth – service account authentication where the username is
+//     the service_id and the password is the service_api_key. The Nexus
+//     gateway validates the credentials via bcrypt when the per-request DB
+//     connection is opened (requires NEXUS_HOST to be configured).
+//
+// If neither NEXUS_CONTROL_URL nor AUTH_USER/AUTH_PASS are configured the
+// middleware falls back to the unauthenticated (open) behaviour and logs a
+// warning.
 func BearerAuth(next http.Handler) http.Handler {
 	nexus := cfg.NexusControlURL
 	authUser := cfg.AuthUser
@@ -137,46 +143,74 @@ func BearerAuth(next http.Handler) http.Handler {
 		// Prefer Bearer token when NEXUS_CONTROL_URL is configured.
 		if nexus != "" {
 			authHeader := r.Header.Get("Authorization")
-			if len(authHeader) < 8 || authHeader[:7] != "Bearer " {
-				writeError(w, http.StatusUnauthorized, "missing or invalid bearer token")
-				return
-			}
-			token := authHeader[7:]
-			if !validateNexusToken(token) {
-				writeError(w, http.StatusUnauthorized, "unauthorized")
-				return
-			}
 
-			// Open a per-request DB connection to the Nexus gateway when NEXUS_HOST
-			// is configured, using tenant_id as the PostgreSQL username and the JWT
-			// token as the password. The connection is closed explicitly after the
-			// handler returns to ensure it stays open for the full request lifecycle.
-			// Note: the DSN embeds the JWT token; avoid logging it in error paths.
-			var reqDB *db.PortalDB
-			if nexusHost != "" {
-				tenantID, ok := extractTenantID(token)
-				if !ok {
+			// ── JWT Bearer token ──────────────────────────────────────────────
+			if len(authHeader) >= 8 && authHeader[:7] == "Bearer " {
+				token := authHeader[7:]
+				if !validateNexusToken(token) {
 					writeError(w, http.StatusUnauthorized, "unauthorized")
 					return
 				}
 
-				opened, err := db.OpenWithCredentials(tenantID, token)
-				if err != nil {
-					slog.WarnContext(r.Context(), "failed to open per-request DB connection",
-						"tenant_id", tenantID, "error", err)
+				// Open a per-request DB connection to the Nexus gateway when
+				// NEXUS_HOST is configured, using tenant_id as the PostgreSQL
+				// username and the JWT token as the password. The connection is
+				// closed explicitly after the handler returns.
+				// Note: the DSN embeds the JWT token; avoid logging it in error paths.
+				var reqDB *db.PortalDB
+				if nexusHost != "" {
+					tenantID, ok := extractTenantID(token)
+					if !ok {
+						writeError(w, http.StatusUnauthorized, "unauthorized")
+						return
+					}
+
+					opened, err := db.OpenWithCredentials(tenantID, token)
+					if err != nil {
+						slog.WarnContext(r.Context(), "failed to open per-request DB connection",
+							"tenant_id", tenantID, "error", err)
+						writeError(w, http.StatusServiceUnavailable, "service unavailable")
+						return
+					}
+
+					reqDB = opened
+					r = r.WithContext(withDB(r.Context(), reqDB))
+				}
+
+				next.ServeHTTP(w, r)
+
+				if reqDB != nil {
+					reqDB.Close()
+				}
+				return
+			}
+
+			// ── Service account via HTTP Basic Auth ───────────────────────────
+			// The service_id is used as the PostgreSQL username and the
+			// service_api_key as the password. The Nexus DB gateway validates
+			// the credentials using bcrypt when the connection is established.
+			if serviceID, apiKey, ok := r.BasicAuth(); ok && serviceID != "" && apiKey != "" {
+				if nexusHost == "" {
+					slog.WarnContext(r.Context(), "service account authentication requires NEXUS_HOST to be configured")
 					writeError(w, http.StatusServiceUnavailable, "service unavailable")
 					return
 				}
 
-				reqDB = opened
-				r = r.WithContext(withDB(r.Context(), reqDB))
+				opened, err := db.OpenWithCredentials(serviceID, apiKey)
+				if err != nil {
+					slog.WarnContext(r.Context(), "failed to open per-request DB connection for service account",
+						"service_id", serviceID, "error", err)
+					writeError(w, http.StatusServiceUnavailable, "service unavailable")
+					return
+				}
+
+				r = r.WithContext(withDB(r.Context(), opened))
+				next.ServeHTTP(w, r)
+				opened.Close()
+				return
 			}
 
-			next.ServeHTTP(w, r)
-
-			if reqDB != nil {
-				reqDB.Close()
-			}
+			writeError(w, http.StatusUnauthorized, "missing or invalid authentication")
 			return
 		}
 
