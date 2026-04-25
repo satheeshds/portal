@@ -44,10 +44,12 @@ func basicAuthRequest(user, pass string) *http.Request {
 
 // ── No-auth (unconfigured) ────────────────────────────────────────────────────
 
-func TestBearerAuth_NoConfig_PassThrough(t *testing.T) {
+func TestBearerAuth_NoConfig_AllowsUnauthenticatedAccess(t *testing.T) {
 	withTestConfig(t, Config{})
 	h := BearerAuth(okHandler)
 
+	// No auth credentials required when nothing is configured; the middleware
+	// passes the request through to the next handler unconditionally.
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 	if rec.Code != http.StatusOK {
@@ -154,12 +156,14 @@ func TestBearerAuth_ServiceAccount_WithoutNexusHost_Returns503(t *testing.T) {
 	}
 }
 
-func TestBearerAuth_ServiceAccount_InvalidCredentials_WithNexusHost(t *testing.T) {
-	// When NEXUS_HOST is configured but points to nothing, OpenWithCredentials
-	// succeeds (lazy pool creation) and the middleware passes the request
-	// through. The DB error surfaces when the handler executes the first query.
-	// This test verifies that the middleware itself doesn't reject the request
-	// with invalid credentials – that is the gateway's job.
+func TestBearerAuth_ServiceAccount_LazyPoolCreation(t *testing.T) {
+	// When NEXUS_HOST is configured, the middleware creates a connection pool
+	// lazily (no immediate TCP connection is made by OpenWithCredentials).
+	// Credential validation happens inside the Nexus DB gateway on the first
+	// query, which is outside the middleware's scope. The middleware's job is
+	// only to route the request to the correct DB connection pool; it returns
+	// 200 here because the pool creation itself succeeds regardless of whether
+	// the credentials are valid.
 	t.Setenv("NEXUS_HOST", "127.0.0.1")
 	t.Setenv("NEXUS_PORT", "15433") // non-listening port
 	withTestConfig(t, Config{
@@ -170,11 +174,10 @@ func TestBearerAuth_ServiceAccount_InvalidCredentials_WithNexusHost(t *testing.T
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, basicAuthRequest("svc_id_123", "bad-api-key"))
-	// The middleware opens the pool lazily, so this succeeds with 200.
-	// The DB error appears when the handler queries the DB (tested via
-	// integration tests against a live Nexus gateway).
+	// Pool creation is lazy – no auth error is surfaced here.
+	// The Nexus gateway validates credentials when the first query runs.
 	if rec.Code != http.StatusOK {
-		t.Fatalf("expected 200 (lazy pool, no immediate auth), got %d", rec.Code)
+		t.Fatalf("expected 200 (lazy pool creation), got %d", rec.Code)
 	}
 }
 
