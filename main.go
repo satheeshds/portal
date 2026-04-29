@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	_ "github.com/satheeshds/portal/docs"
 	"github.com/satheeshds/portal/handlers"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
