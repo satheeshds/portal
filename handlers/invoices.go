@@ -21,7 +21,7 @@ import (
 //	@Param			search		query		string	false	"Search by invoice number, notes, or customer name"
 //	@Success		200			{object}	Response{data=[]models.Invoice}
 //	@Router			/invoices [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func ListInvoices(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	invoices, err := s.ListInvoices(
@@ -47,7 +47,7 @@ func ListInvoices(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	Response{data=models.Invoice}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/invoices/{id} [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func GetInvoice(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -73,7 +73,7 @@ func GetInvoice(w http.ResponseWriter, r *http.Request) {
 //	@Success		201		{object}	Response{data=models.Invoice}
 //	@Failure		400		{object}	Response{error=string}
 //	@Router			/invoices [post]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func CreateInvoice(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	var input models.InvoiceInput
@@ -105,7 +105,7 @@ func CreateInvoice(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400		{object}	Response{error=string}
 //	@Failure		404		{object}	Response{error=string}
 //	@Router			/invoices/{id} [put]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func UpdateInvoice(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -139,7 +139,7 @@ func UpdateInvoice(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	Response{data=map[string]string}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/invoices/{id} [delete]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func DeleteInvoice(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -162,7 +162,7 @@ func DeleteInvoice(w http.ResponseWriter, r *http.Request) {
 //	@Param			id	path		int	true	"Invoice ID"
 //	@Success		200	{object}	Response{data=[]InvoiceLink}
 //	@Router			/invoices/{id}/links [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func GetInvoiceLinks(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -186,7 +186,7 @@ type InvoiceLink = store.InvoiceLink
 //	@Success		200	{object}	Response{data=[]models.InvoiceItem}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/invoices/{id}/items [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func ListInvoiceItems(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -221,7 +221,7 @@ func ListInvoiceItems(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400		{object}	Response{error=string}
 //	@Failure		404		{object}	Response{error=string}
 //	@Router			/invoices/{id}/items [post]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func CreateInvoiceItem(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	invoiceID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -267,7 +267,7 @@ func CreateInvoiceItem(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400		{object}	Response{error=string}
 //	@Failure		404		{object}	Response{error=string}
 //	@Router			/invoices/{id}/items/{itemId} [put]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func UpdateInvoiceItem(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	invoiceID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -305,7 +305,7 @@ func UpdateInvoiceItem(w http.ResponseWriter, r *http.Request) {
 //	@Success		200		{object}	Response{data=map[string]string}
 //	@Failure		404		{object}	Response{error=string}
 //	@Router			/invoices/{id}/items/{itemId} [delete]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func DeleteInvoiceItem(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	invoiceID, _ := strconv.Atoi(chi.URLParam(r, "id"))

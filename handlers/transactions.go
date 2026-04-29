@@ -22,7 +22,7 @@ import (
 //	@Param			contact_id	query		int	false	"Filter by contact"
 //	@Success		200			{object}	Response{data=[]models.Transaction}
 //	@Router			/transactions [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func ListTransactions(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	txns, err := s.ListTransactions(
@@ -47,7 +47,7 @@ func ListTransactions(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	Response{data=models.Transaction}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/transactions/{id} [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func GetTransaction(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -68,7 +68,7 @@ func GetTransaction(w http.ResponseWriter, r *http.Request) {
 //	@Param			transaction	body		models.TransactionInput	true	"Transaction contents"
 //	@Success		201			{object}	Response{data=models.Transaction}
 //	@Router			/transactions [post]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func CreateTransaction(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	var input models.TransactionInput
@@ -99,7 +99,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request) {
 //	@Success		200			{object}	Response{data=models.Transaction}
 //	@Failure		404			{object}	Response{error=string}
 //	@Router			/transactions/{id} [put]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -133,7 +133,7 @@ func UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	Response{data=map[string]string}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/transactions/{id} [delete]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -158,7 +158,7 @@ func DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 //	@Param			id	path		int	true	"Transaction ID"
 //	@Success		200	{object}	Response{data=[]models.TransactionDocument}
 //	@Router			/transactions/{id}/links [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func ListTransactionLinks(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -180,7 +180,7 @@ func ListTransactionLinks(w http.ResponseWriter, r *http.Request) {
 //	@Param			link	body		models.TransactionDocumentInput	true	"Link details"
 //	@Success		201		{object}	Response{data=models.TransactionDocument}
 //	@Router			/transactions/{id}/links [post]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func CreateTransactionLink(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -241,7 +241,7 @@ func CreateTransactionLink(w http.ResponseWriter, r *http.Request) {
 //	@Param			linkId	path		int	true	"Link ID"
 //	@Success		200		{object}	Response{data=map[string]string}
 //	@Router			/transactions/{id}/links/{linkId} [delete]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func DeleteTransactionLink(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))

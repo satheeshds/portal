@@ -47,7 +47,7 @@ func ListBills(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	Response{data=models.Bill}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/bills/{id} [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func GetBill(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -73,7 +73,7 @@ func GetBill(w http.ResponseWriter, r *http.Request) {
 //	@Success		201		{object}	Response{data=models.Bill}
 //	@Failure		400		{object}	Response{error=string}
 //	@Router			/bills [post]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func CreateBill(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	var input models.BillInput
@@ -105,7 +105,7 @@ func CreateBill(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400		{object}	Response{error=string}
 //	@Failure		404		{object}	Response{error=string}
 //	@Router			/bills/{id} [put]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func UpdateBill(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -139,7 +139,7 @@ func UpdateBill(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	Response{data=map[string]string}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/bills/{id} [delete]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func DeleteBill(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -162,7 +162,7 @@ func DeleteBill(w http.ResponseWriter, r *http.Request) {
 //	@Param			id	path		int	true	"Bill ID"
 //	@Success		200	{object}	Response{data=[]BillLink}
 //	@Router			/bills/{id}/links [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func GetBillLinks(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -186,7 +186,7 @@ type BillLink = store.BillLink
 //	@Success		200	{object}	Response{data=[]models.BillItem}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/bills/{id}/items [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func ListBillItems(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -221,7 +221,7 @@ func ListBillItems(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400		{object}	Response{error=string}
 //	@Failure		404		{object}	Response{error=string}
 //	@Router			/bills/{id}/items [post]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func CreateBillItem(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	billID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -267,7 +267,7 @@ func CreateBillItem(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400		{object}	Response{error=string}
 //	@Failure		404		{object}	Response{error=string}
 //	@Router			/bills/{id}/items/{itemId} [put]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func UpdateBillItem(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	billID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -305,7 +305,7 @@ func UpdateBillItem(w http.ResponseWriter, r *http.Request) {
 //	@Success		200		{object}	Response{data=map[string]string}
 //	@Failure		404		{object}	Response{error=string}
 //	@Router			/bills/{id}/items/{itemId} [delete]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func DeleteBillItem(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	billID, _ := strconv.Atoi(chi.URLParam(r, "id"))

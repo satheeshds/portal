@@ -25,11 +25,9 @@ var staticFiles embed.FS
 //	@description					API for managing accounts, contacts, bills, invoices, and transactions.
 //	@host							localhost:8090
 //	@BasePath						/api/v1
-//	@securityDefinitions.BearerAuth	BearerAuth
-//	@in								header
-//	@type							http
-//	@scheme							bearer
-//	@name							Authorization
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
 
 func main() {
 	// Configure structured logging

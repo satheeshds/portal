@@ -22,7 +22,7 @@ import (
 //	@Param			type		query		string	false	"Filter by type (income, expense)"
 //	@Success		200			{object}	Response{data=[]models.RecurringPayment}
 //	@Router			/recurring-payments [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func ListRecurringPayments(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	accountID := r.URL.Query().Get("account_id")
@@ -54,7 +54,7 @@ func ListRecurringPayments(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	Response{data=models.RecurringPayment}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/recurring-payments/{id} [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func GetRecurringPayment(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -80,7 +80,7 @@ func GetRecurringPayment(w http.ResponseWriter, r *http.Request) {
 //	@Success		201					{object}	Response{data=models.RecurringPayment}
 //	@Failure		400					{object}	Response{error=string}
 //	@Router			/recurring-payments [post]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func CreateRecurringPayment(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	var input models.RecurringPaymentInput
@@ -112,7 +112,7 @@ func CreateRecurringPayment(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400					{object}	Response{error=string}
 //	@Failure		404					{object}	Response{error=string}
 //	@Router			/recurring-payments/{id} [put]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func UpdateRecurringPayment(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -146,7 +146,7 @@ func UpdateRecurringPayment(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	Response{data=map[string]string}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/recurring-payments/{id} [delete]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func DeleteRecurringPayment(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -169,7 +169,7 @@ func DeleteRecurringPayment(w http.ResponseWriter, r *http.Request) {
 //	@Param			id	path		int	true	"Recurring Payment ID"
 //	@Success		200	{object}	Response{data=[]RecurringPaymentLink}
 //	@Router			/recurring-payments/{id}/links [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func GetRecurringPaymentLinks(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -194,7 +194,7 @@ type RecurringPaymentLink = store.RecurringPaymentLink
 //	@Success		200		{object}	Response{data=[]models.RecurringPaymentOccurrence}
 //	@Failure		404		{object}	Response{error=string}
 //	@Router			/recurring-payments/{id}/occurrences [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func GetRecurringPaymentOccurrences(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	rpID, _ := strconv.Atoi(chi.URLParam(r, "id"))
