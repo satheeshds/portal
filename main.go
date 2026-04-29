@@ -142,7 +142,9 @@ func main() {
 	// Swagger UI
 	r.Get("/swagger/doc.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(swaggerSpec) //nolint:errcheck
+		if _, err := w.Write(swaggerSpec); err != nil {
+			http.Error(w, "failed to serve swagger spec", http.StatusInternalServerError)
+		}
 	})
 	r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL("/swagger/doc.json")))
 
