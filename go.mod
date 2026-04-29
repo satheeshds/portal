@@ -8,7 +8,7 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/pressly/goose/v3 v3.24.3
 	github.com/swaggo/http-swagger v1.3.4
-	github.com/swaggo/swag/v2 v2.0.0-rc5
+	github.com/swaggo/swag v1.8.1
 )
 
 require (
@@ -45,11 +45,7 @@ require (
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/pierrec/lz4/v4 v4.1.25 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
-	github.com/sv-tools/openapi v0.4.0 // indirect
 	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
-	github.com/swaggo/files/v2 v2.0.0 // indirect
-	github.com/swaggo/http-swagger/v2 v2.0.2 // indirect
-	github.com/swaggo/swag v1.8.1 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect

@@ -142,7 +142,8 @@ definitions:
     type: object
   handlers.Response:
     properties:
-      data: {}
+      data:
+        type: any
       error:
         type: string
     type: object
@@ -711,7 +712,8 @@ definitions:
         type: integer
       recent_transactions:
         items:
-          additionalProperties: {}
+          additionalProperties:
+            type: any
           type: object
         type: array
       total_accounts:
