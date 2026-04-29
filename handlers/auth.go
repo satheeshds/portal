@@ -132,7 +132,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Step 3: Connect to the tenant's database.
-	tenantDB, err := db.OpenWithCredentials(creds.Username, creds.Password)
+	tenantDB, err := db.OpenWithCredentials(r.Context(), creds.Username, creds.Password)
 	if err != nil {
 		slog.Error("failed to open database connection for new tenant", "tenant_id", tenantID, "error", err)
 		// Tenant was created; still return 201. The platform service will retry.

@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -61,7 +62,7 @@ func forEachTenant(controlURL, adminKey, action string, fn func(*PortalDB, strin
 			continue
 		}
 
-		portalDB, err := OpenWithCredentials(creds.Username, creds.Password)
+		portalDB, err := OpenWithCredentials(context.Background(), creds.Username, creds.Password)
 		if err != nil {
 			slog.Error("failed to open database connection", "tenant_id", t.ID, "error", err)
 			continue

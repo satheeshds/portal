@@ -87,31 +87,32 @@ func processCode(code string, n *int) string {
 // for compatibility with the PostgreSQL wire protocol used by the Nexus gateway.
 type PortalDB struct {
 	*sql.DB
+	ctx context.Context
 }
 
 // WrapDB wraps an existing *sql.DB in PortalDB. Useful for testing.
-func WrapDB(db *sql.DB) *PortalDB {
-	return &PortalDB{db}
+func WrapDB(ctx context.Context, db *sql.DB) *PortalDB {
+	return &PortalDB{db, ctx}
 }
 
 // Query rebinds ? placeholders before executing the query.
 func (d *PortalDB) Query(query string, args ...any) (*sql.Rows, error) {
-	return d.DB.Query(rebind(query), args...)
+	return d.DB.QueryContext(d.ctx, rebind(query), args...)
 }
 
 // QueryRow rebinds ? placeholders before executing the query.
 func (d *PortalDB) QueryRow(query string, args ...any) *sql.Row {
-	return d.DB.QueryRow(rebind(query), args...)
+	return d.DB.QueryRowContext(d.ctx, rebind(query), args...)
 }
 
 // Exec rebinds ? placeholders before executing the statement.
 func (d *PortalDB) Exec(query string, args ...any) (sql.Result, error) {
-	return d.DB.Exec(rebind(query), args...)
+	return d.DB.ExecContext(d.ctx, rebind(query), args...)
 }
 
 // Prepare rebinds ? placeholders before preparing the statement.
 func (d *PortalDB) Prepare(query string) (*sql.Stmt, error) {
-	return d.DB.Prepare(rebind(query))
+	return d.DB.PrepareContext(d.ctx, rebind(query))
 }
 
 // Begin starts a transaction and returns a PortalTx that also auto-rebinds.

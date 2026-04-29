@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"log/slog"
 	"strings"
 
 	"github.com/satheeshds/portal/db"
@@ -103,11 +104,15 @@ func (s *Store) ListBills(status, contactID, from, to, search string) ([]models.
 	defer rows.Close()
 
 	var bills []models.Bill
+
+	slog.Debug("Bills listed", slog.Any("bills", bills))
 	for rows.Next() {
 		b, err := scanBill(rows)
 		if err != nil {
+			slog.Error("Error scanning bill", slog.Any("error", err))
 			return nil, err
 		}
+		slog.Debug("Bill scanned", slog.Any("bill", b))
 		b.Items = []models.BillItem{}
 		bills = append(bills, b)
 	}

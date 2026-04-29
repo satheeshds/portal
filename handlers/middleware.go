@@ -165,7 +165,7 @@ func BearerAuth(next http.Handler) http.Handler {
 						return
 					}
 
-					opened, err := db.OpenWithCredentials(tenantID, token)
+					opened, err := db.OpenWithCredentials(r.Context(), tenantID, token)
 					if err != nil {
 						slog.WarnContext(r.Context(), "failed to open per-request DB connection",
 							"tenant_id", tenantID, "error", err)
@@ -196,7 +196,7 @@ func BearerAuth(next http.Handler) http.Handler {
 					return
 				}
 
-				opened, err := db.OpenWithCredentials(serviceID, apiKey)
+				opened, err := db.OpenWithCredentials(r.Context(), serviceID, apiKey)
 				if err != nil {
 					slog.WarnContext(r.Context(), "failed to open per-request DB connection for service account",
 						"service_id", serviceID, "error", err)
