@@ -10,8 +10,8 @@ import (
 type BillMatchCandidate struct {
 	ID          int
 	BillNumber  string
-	DueDate     *string
-	IssueDate   *string
+	DueDate     models.Date
+	IssueDate   models.Date
 	Amount      models.Money
 	Notes       string
 	ContactName string
@@ -22,8 +22,8 @@ type BillMatchCandidate struct {
 type InvoiceMatchCandidate struct {
 	ID            int
 	InvoiceNumber string
-	DueDate       *string
-	IssueDate     *string
+	DueDate       models.Date
+	IssueDate     models.Date
 	Amount        models.Money
 	Notes         string
 	ContactName   string
@@ -34,7 +34,7 @@ type InvoiceMatchCandidate struct {
 type PayoutMatchCandidate struct {
 	ID             int
 	UtrNumber      string
-	SettlementDate *string
+	SettlementDate models.Date
 	Amount         models.Money
 	OutletName     string
 	Allocated      models.Money
@@ -43,7 +43,7 @@ type PayoutMatchCandidate struct {
 // RPOccurrenceCandidate holds raw recurring payment occurrence data.
 type RPOccurrenceCandidate struct {
 	ID          int
-	DueDate     string
+	DueDate     models.Date
 	Amount      models.Money
 	Allocated   models.Money
 	Name        string
@@ -55,7 +55,7 @@ type RPOccurrenceCandidate struct {
 type TransactionCandidate struct {
 	ID          int
 	Amount      models.Money
-	Date        *string
+	Date        models.Date
 	Description string
 	Reference   string
 	Allocated   models.Money
@@ -65,8 +65,8 @@ type TransactionCandidate struct {
 type BillMatchInfo struct {
 	Amount      models.Money
 	BillNumber  string
-	DueDate     *string
-	IssueDate   *string
+	DueDate     models.Date
+	IssueDate   models.Date
 	Notes       string
 	ContactName string
 }
@@ -75,8 +75,8 @@ type BillMatchInfo struct {
 type InvoiceMatchInfo struct {
 	Amount        models.Money
 	InvoiceNumber string
-	DueDate       *string
-	IssueDate     *string
+	DueDate       models.Date
+	IssueDate     models.Date
 	Notes         string
 	ContactName   string
 }
@@ -85,7 +85,7 @@ type InvoiceMatchInfo struct {
 type PayoutMatchInfo struct {
 	Amount         models.Money
 	UtrNumber      string
-	SettlementDate *string
+	SettlementDate models.Date
 	OutletName     string
 }
 
@@ -96,7 +96,7 @@ type RPMatchInfo struct {
 	Name        string
 	Description string
 	Reference   string
-	NextDueDate *string
+	NextDueDate models.Date
 }
 
 // SuggestBills returns unallocated bill candidates for match scoring.

@@ -1,9 +1,98 @@
 package models
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"strings"
+	"time"
 )
+
+// Date is a nullable date value that can be scanned from a database time.Time (as returned
+// by pgx for DATE/TIMESTAMP columns) or from a string in YYYY-MM-DD format.
+// A zero Time represents a NULL or absent date.
+type Date struct {
+	time.Time
+}
+
+// Scan implements the sql.Scanner interface, accepting time.Time, string, []byte, or nil.
+func (d *Date) Scan(value interface{}) error {
+	if value == nil {
+		d.Time = time.Time{}
+		return nil
+	}
+	switch v := value.(type) {
+	case time.Time:
+		d.Time = v
+		return nil
+	case []byte:
+		return d.parseDate(string(v))
+	case string:
+		return d.parseDate(v)
+	default:
+		return fmt.Errorf("cannot scan type %T into Date", v)
+	}
+}
+
+func (d *Date) parseDate(s string) error {
+	if s == "" {
+		d.Time = time.Time{}
+		return nil
+	}
+	// Try YYYY-MM-DD (canonical format)
+	t, err := time.Parse("2006-01-02", s)
+	if err == nil {
+		d.Time = t
+		return nil
+	}
+	// Try full timestamp formats (e.g. "2006-01-02 15:04:05 +0000 UTC")
+	for _, layout := range []string{
+		"2006-01-02 15:04:05.999999 +0000 UTC",
+		"2006-01-02 15:04:05.999999",
+		"2006-01-02 15:04:05",
+		time.RFC3339,
+	} {
+		if t, err := time.Parse(layout, s); err == nil {
+			d.Time = t
+			return nil
+		}
+	}
+	return fmt.Errorf("cannot parse %q as date", s)
+}
+
+// Value implements the driver.Valuer interface.
+func (d Date) Value() (driver.Value, error) {
+	if d.IsZero() {
+		return nil, nil
+	}
+	return d.Time.Format("2006-01-02"), nil
+}
+
+// MarshalJSON marshals the date as a JSON string "YYYY-MM-DD" or null for zero/absent dates.
+func (d Date) MarshalJSON() ([]byte, error) {
+	if d.IsZero() {
+		return []byte("null"), nil
+	}
+	return []byte(`"` + d.Time.Format("2006-01-02") + `"`), nil
+}
+
+// UnmarshalJSON accepts a "YYYY-MM-DD" JSON string or null.
+func (d *Date) UnmarshalJSON(data []byte) error {
+	s := string(data)
+	if s == "null" {
+		d.Time = time.Time{}
+		return nil
+	}
+	s = strings.Trim(s, `"`)
+	return d.parseDate(s)
+}
+
+// String returns the date formatted as "YYYY-MM-DD", or "" for a zero/absent date.
+func (d Date) String() string {
+	if d.IsZero() {
+		return ""
+	}
+	return d.Time.Format("2006-01-02")
+}
 
 // NormalizeDate converts a date string from DD-MM-YYYY or DD/MM/YYYY to YYYY-MM-DD.
 // Strings already in YYYY-MM-DD format are returned unchanged.

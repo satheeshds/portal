@@ -3,6 +3,8 @@ package handlers
 import (
 	"testing"
 	"time"
+
+	"github.com/satheeshds/portal/models"
 )
 
 func TestBuildMatchSearchText(t *testing.T) {
@@ -285,18 +287,21 @@ func TestMatchDescScore(t *testing.T) {
 }
 
 func TestDerefDate(t *testing.T) {
-	str := func(s string) *string { return &s }
+	parseDate := func(s string) models.Date {
+		var d models.Date
+		_ = d.Scan(s)
+		return d
+	}
 
 	tests := []struct {
 		name  string
-		dates []*string
+		dates []models.Date
 		want  string
 	}{
-		{"first non-empty", []*string{str("2024-01-15"), str("2024-01-01")}, "2024-01-15"},
-		{"skip nil, take second", []*string{nil, str("2024-01-01")}, "2024-01-01"},
-		{"skip empty, take second", []*string{str(""), str("2024-01-01")}, "2024-01-01"},
-		{"all nil", []*string{nil, nil}, ""},
-		{"no args", []*string{}, ""},
+		{"first non-empty", []models.Date{parseDate("2024-01-15"), parseDate("2024-01-01")}, "2024-01-15"},
+		{"skip zero, take second", []models.Date{{}, parseDate("2024-01-01")}, "2024-01-01"},
+		{"all zero", []models.Date{{}, {}}, ""},
+		{"no args", []models.Date{}, ""},
 	}
 
 	for _, tt := range tests {

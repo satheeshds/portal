@@ -6,7 +6,7 @@ type Transaction struct {
 	AccountID         int       `json:"account_id"`
 	Type              string    `json:"type"` // income, expense, transfer
 	Amount            Money     `json:"amount"`
-	TransactionDate   *string   `json:"transaction_date"`
+	TransactionDate   Date      `json:"transaction_date"`
 	Description       *string   `json:"description"`
 	Reference         *string   `json:"reference"`
 	TransferAccountID *int      `json:"transfer_account_id"`

@@ -10,10 +10,10 @@ type RecurringPayment struct {
 	ContactID         *int      `json:"contact_id"`
 	Frequency         string    `json:"frequency"` // daily, weekly, monthly, quarterly, yearly
 	Interval          int       `json:"interval"`  // every N frequencies (e.g. 2 = every 2 months)
-	StartDate         string    `json:"start_date"`
-	EndDate           *string   `json:"end_date"`
-	NextDueDate       *string   `json:"next_due_date"`
-	LastGeneratedDate *string   `json:"last_generated_date"`
+	StartDate         Date      `json:"start_date"`
+	EndDate           Date      `json:"end_date"`
+	NextDueDate       Date      `json:"next_due_date"`
+	LastGeneratedDate Date      `json:"last_generated_date"`
 	Status            string    `json:"status"` // active, paused, cancelled, completed
 	Description       *string   `json:"description"`
 	Reference         *string   `json:"reference"`
@@ -29,7 +29,7 @@ type RecurringPayment struct {
 type RecurringPaymentOccurrence struct {
 	ID                 int       `json:"id"`
 	RecurringPaymentID int       `json:"recurring_payment_id"`
-	DueDate            string    `json:"due_date"`
+	DueDate            Date      `json:"due_date"`
 	Amount             Money     `json:"amount"`
 	Status             string    `json:"status"` // pending, paid, skipped
 	CreatedAt          Timestamp `json:"created_at"`

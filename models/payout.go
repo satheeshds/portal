@@ -9,9 +9,9 @@ type Payout struct {
 	ID                    int       `json:"id"`
 	OutletName            string    `json:"outlet_name"`
 	Platform              string    `json:"platform"` // swiggy, zomato, swiggy-dineout
-	PeriodStart           *string   `json:"period_start"`
-	PeriodEnd             *string   `json:"period_end"`
-	SettlementDate        *string   `json:"settlement_date"`
+	PeriodStart           Date      `json:"period_start"`
+	PeriodEnd             Date      `json:"period_end"`
+	SettlementDate        Date      `json:"settlement_date"`
 	TotalOrders           int       `json:"total_orders"`
 	GrossSalesAmt         Money     `json:"gross_sales_amt"`
 	RestaurantDiscountAmt Money     `json:"restaurant_discount_amt"`
