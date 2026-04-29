@@ -106,6 +106,22 @@ func TestBearerAuth_JWT_ValidToken_NoNexusHost(t *testing.T) {
 	}
 }
 
+// TestBearerAuth_JWT_RawToken verifies that a raw JWT (without "Bearer " prefix)
+// is accepted — this is what Swagger UI sends when using an apiKey security scheme.
+func TestBearerAuth_JWT_RawToken(t *testing.T) {
+	withTestConfig(t, Config{NexusControlURL: "http://nexus.example.com"})
+	h := BearerAuth(okHandler)
+
+	token := makeJWT("tenant_abc", 3600)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/test", nil)
+	req.Header.Set("Authorization", token) // raw token, no "Bearer " prefix
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 for raw JWT token, got %d", rec.Code)
+	}
+}
+
 func TestBearerAuth_JWT_ExpiredToken(t *testing.T) {
 	withTestConfig(t, Config{NexusControlURL: "http://nexus.example.com"})
 	h := BearerAuth(okHandler)
