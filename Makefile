@@ -38,4 +38,4 @@ test: ## Run Go tests
 	go test ./...
 
 swag-init: ## Initialize Swagger
-	swag init -g ./main.go --output ./docs
+	swag init
