@@ -4237,9 +4237,7 @@
         "handlers.Response": {
             "type": "object",
             "properties": {
-                "data": {
-                    "type": "any"
-                },
+                "data": {},
                 "error": {
                     "type": "string"
                 }
@@ -5094,9 +5092,7 @@
                     "type": "array",
                     "items": {
                         "type": "object",
-                        "additionalProperties": {
-                            "type": "any"
-                        }
+                        "additionalProperties": {}
                     }
                 },
                 "total_accounts": {

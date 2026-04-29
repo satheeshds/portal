@@ -12,13 +12,15 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	_ "github.com/satheeshds/portal/docs"
 	"github.com/satheeshds/portal/handlers"
-	httpSwagger "github.com/swaggo/http-swagger"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 //go:embed static/*
 var staticFiles embed.FS
+
+//go:embed docs/swagger.json
+var swaggerSpec []byte
 
 // @title Portal API
 // @version 1.0.0
@@ -138,7 +140,11 @@ func main() {
 	r.Handle("/*", http.FileServer(http.FS(staticFS)))
 
 	// Swagger UI
-	r.Get("/swagger/*", httpSwagger.WrapHandler)
+	r.Get("/swagger/doc.json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(swaggerSpec) //nolint:errcheck
+	})
+	r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL("/swagger/doc.json")))
 
 	// Start server
 	port := os.Getenv("PORT")
