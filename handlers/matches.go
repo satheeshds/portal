@@ -49,7 +49,7 @@ type AutoMatchResult struct {
 //	@Success		200	{object}	Response{data=[]MatchSuggestion}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/transactions/{id}/match-suggestions [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func SuggestMatches(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -94,7 +94,7 @@ func SuggestMatches(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	Response{data=AutoMatchResult}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/transactions/{id}/auto-match [post]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func AutoMatch(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -519,7 +519,7 @@ func getDocumentAllocated(s *store.Store, docType string, docID int) models.Mone
 //	@Success		200	{object}	Response{data=[]TransactionSuggestion}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/bills/{id}/match-suggestions [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func SuggestTransactionsForBill(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	billID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -562,7 +562,7 @@ func SuggestTransactionsForBill(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	Response{data=[]TransactionSuggestion}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/invoices/{id}/match-suggestions [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func SuggestTransactionsForInvoice(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	invoiceID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -605,7 +605,7 @@ func SuggestTransactionsForInvoice(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	Response{data=[]TransactionSuggestion}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/payouts/{id}/match-suggestions [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func SuggestTransactionsForPayout(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	payoutID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -723,7 +723,7 @@ func suggestTransactionsForDocumentStore(s *store.Store, txnType, docType string
 //	@Success		200	{object}	Response{data=[]TransactionSuggestion}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/recurring-payments/{id}/match-suggestions [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func SuggestTransactionsForRecurringPayment(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	rpID, _ := strconv.Atoi(chi.URLParam(r, "id"))

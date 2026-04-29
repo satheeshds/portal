@@ -13,7 +13,7 @@ import (
 //	@Produce		json
 //	@Success		200	{object}	Response{data=store.DashboardData}
 //	@Router			/dashboard [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func GetDashboard(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	d, err := s.GetDashboard()

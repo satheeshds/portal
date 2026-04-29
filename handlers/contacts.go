@@ -21,7 +21,7 @@ import (
 //	@Param			search	query		string	false	"Search by name, email, or phone"
 //	@Success		200		{object}	Response{data=[]models.Contact}
 //	@Router			/contacts [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func ListContacts(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	typeFilter := r.URL.Query().Get("type")
@@ -43,7 +43,7 @@ func ListContacts(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	Response{data=models.Contact}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/contacts/{id} [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func GetContact(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -69,7 +69,7 @@ func GetContact(w http.ResponseWriter, r *http.Request) {
 //	@Success		201		{object}	Response{data=models.Contact}
 //	@Failure		400		{object}	Response{error=string}
 //	@Router			/contacts [post]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func CreateContact(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	var input models.ContactInput
@@ -101,7 +101,7 @@ func CreateContact(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400		{object}	Response{error=string}
 //	@Failure		404		{object}	Response{error=string}
 //	@Router			/contacts/{id} [put]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func UpdateContact(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -135,7 +135,7 @@ func UpdateContact(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	Response{data=map[string]string}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/contacts/{id} [delete]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func DeleteContact(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))

@@ -524,7 +524,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Create a new payable bill.",
@@ -593,7 +593,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get details and allocation status of a specific bill.",
@@ -655,7 +655,7 @@ const docTemplate = `{
             "put": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Update details of an existing bill.",
@@ -747,7 +747,7 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Remove a bill.",
@@ -814,7 +814,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get all line items for a specific bill.",
@@ -879,7 +879,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Add a new line item to an existing bill.",
@@ -973,7 +973,7 @@ const docTemplate = `{
             "put": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Update an existing line item in a bill.",
@@ -1072,7 +1072,7 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Remove a line item from a bill.",
@@ -1146,7 +1146,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get all payment transactions linked to a specific bill.",
@@ -1195,7 +1195,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Returns a ranked list of unallocated bank transactions that could match a bill, scored by amount, date, and description similarity. Already-linked transactions are excluded.",
@@ -1262,7 +1262,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get a list of all vendors and customers with financial summaries.",
@@ -1314,7 +1314,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Create a new vendor or customer.",
@@ -1383,7 +1383,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get details and financial summary of a specific contact.",
@@ -1445,7 +1445,7 @@ const docTemplate = `{
             "put": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Update details of an existing contact.",
@@ -1537,7 +1537,7 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Remove a contact.",
@@ -1604,7 +1604,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get totals for accounts, contacts, bills, invoices, and recent transactions.",
@@ -1641,7 +1641,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get a list of all receivable invoices, with current status and allocation info.",
@@ -1693,7 +1693,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Create a new receivable invoice.",
@@ -1762,7 +1762,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get details and allocation status of a specific invoice.",
@@ -1824,7 +1824,7 @@ const docTemplate = `{
             "put": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Update details of an existing invoice.",
@@ -1916,7 +1916,7 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Remove an invoice.",
@@ -1983,7 +1983,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get all line items for a specific invoice.",
@@ -2048,7 +2048,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Add a new line item to an existing invoice.",
@@ -2142,7 +2142,7 @@ const docTemplate = `{
             "put": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Update an existing line item in an invoice.",
@@ -2241,7 +2241,7 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Remove a line item from an invoice.",
@@ -2315,7 +2315,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get all payment transactions linked to a specific invoice.",
@@ -2364,7 +2364,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Returns a ranked list of unallocated bank transactions that could match an invoice, scored by amount, date, and description similarity. Already-linked transactions are excluded.",
@@ -2431,7 +2431,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get a list of all platform payouts (Swiggy, Zomato, Swiggy-Dineout).",
@@ -2495,7 +2495,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Create a new platform payout record.",
@@ -2564,7 +2564,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get details of a specific platform payout.",
@@ -2626,7 +2626,7 @@ const docTemplate = `{
             "put": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Update details of an existing platform payout record.",
@@ -2718,7 +2718,7 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Remove a platform payout record.",
@@ -2785,7 +2785,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get all payment transactions linked to a specific payout.",
@@ -2834,7 +2834,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Returns a ranked list of unallocated bank transactions that could match a payout, scored by amount, date, and UTR/description similarity. Already-linked transactions are excluded.",
@@ -2901,7 +2901,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get a list of all scheduled recurring payments (income or expense).",
@@ -2959,7 +2959,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Create a new scheduled recurring payment.",
@@ -3028,7 +3028,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get details of a specific recurring payment.",
@@ -3090,7 +3090,7 @@ const docTemplate = `{
             "put": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Update details of an existing recurring payment.",
@@ -3182,7 +3182,7 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Remove a recurring payment.",
@@ -3249,7 +3249,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get all payment transactions linked to a specific recurring payment, including the due date and status of the occurrence each transaction covers.",
@@ -3298,7 +3298,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Returns a ranked list of bank transactions that could correspond to a recurring payment occurrence, scored by amount (±2% tolerance), date proximity to next_due_date, and description/reference similarity. Excludes transactions already linked to this recurring payment.",
@@ -3365,7 +3365,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Returns all scheduled occurrences (instances) for a recurring payment. Occurrences are auto-generated by the server for each due date up to today. Each occurrence tracks whether it has been paid via a linked bank transaction.",
@@ -3438,7 +3438,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get a list of all bank transactions (income, expense, transfer) with allocation info.",
@@ -3490,7 +3490,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Create a new bank transaction (income, expense, or transfer).",
@@ -3541,7 +3541,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get details and allocation status of a specific transaction.",
@@ -3603,7 +3603,7 @@ const docTemplate = `{
             "put": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Update details of an existing transaction.",
@@ -3677,7 +3677,7 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Remove a transaction.",
@@ -3744,7 +3744,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Finds the best matching bill, invoice, or payout for a bank statement entry and automatically creates a transaction link when confidence is at least 0.7. Returns the created link on success, or the top suggestion without linking when confidence is below the threshold.",
@@ -3808,7 +3808,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Get all bills and invoices linked (paid) by this transaction.",
@@ -3855,7 +3855,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Allocate an amount from a transaction to a specific bill or invoice.",
@@ -3913,7 +3913,7 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Deallocate an amount from a transaction to a bill or invoice.",
@@ -3969,7 +3969,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Returns a ranked list of bills, invoices, payouts, and recurring payments that could match a bank statement entry, scored by amount, date, and description similarity. Expense transactions match against bills; income transactions match against invoices and payouts. Recurring payments are suggested for both types as informational matches (linkable=false).",
@@ -5121,6 +5121,13 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`

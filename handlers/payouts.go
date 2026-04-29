@@ -23,7 +23,7 @@ import (
 //	@Param			to			query		string	false	"Filter by settlement date to (YYYY-MM-DD)"
 //	@Success		200			{object}	Response{data=[]models.Payout}
 //	@Router			/payouts [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func ListPayouts(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	payouts, err := s.ListPayouts(
@@ -48,7 +48,7 @@ func ListPayouts(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	Response{data=models.Payout}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/payouts/{id} [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func GetPayout(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -72,7 +72,7 @@ func GetPayout(w http.ResponseWriter, r *http.Request) {
 //	@Param			id	path		int	true	"Payout ID"
 //	@Success		200	{object}	Response{data=[]PayoutLink}
 //	@Router			/payouts/{id}/links [get]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func GetPayoutLinks(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -97,7 +97,7 @@ type PayoutLink = store.PayoutLink
 //	@Success		201		{object}	Response{data=models.Payout}
 //	@Failure		400		{object}	Response{error=string}
 //	@Router			/payouts [post]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func CreatePayout(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	var input models.PayoutInput
@@ -129,7 +129,7 @@ func CreatePayout(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400		{object}	Response{error=string}
 //	@Failure		404		{object}	Response{error=string}
 //	@Router			/payouts/{id} [put]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func UpdatePayout(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -163,7 +163,7 @@ func UpdatePayout(w http.ResponseWriter, r *http.Request) {
 //	@Success		200	{object}	Response{data=map[string]string}
 //	@Failure		404	{object}	Response{error=string}
 //	@Router			/payouts/{id} [delete]
-//	@Security		BasicAuth
+//	@Security		BearerAuth
 func DeletePayout(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
