@@ -13,15 +13,15 @@ import (
 )
 
 // ListContacts lists all contacts
-// @Summary      List contacts
-// @Description  Get a list of all vendors and customers with financial summaries.
-// @Tags         contacts
-// @Produce      json
-// @Param        type    query     string  false  "Filter by type (vendor/customer)"
-// @Param        search  query     string  false  "Search by name, email, or phone"
-// @Success      200    {object}  Response{data=[]models.Contact}
-// @Router       /contacts [get]
-// @Security     BasicAuth
+//	@Summary		List contacts
+//	@Description	Get a list of all vendors and customers with financial summaries.
+//	@Tags			contacts
+//	@Produce		json
+//	@Param			type	query		string	false	"Filter by type (vendor/customer)"
+//	@Param			search	query		string	false	"Search by name, email, or phone"
+//	@Success		200		{object}	Response{data=[]models.Contact}
+//	@Router			/contacts [get]
+//	@Security		BearerAuth
 func ListContacts(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	typeFilter := r.URL.Query().Get("type")
@@ -35,15 +35,15 @@ func ListContacts(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetContact retrieves a single contact by ID
-// @Summary      Get contact
-// @Description  Get details and financial summary of a specific contact.
-// @Tags         contacts
-// @Produce      json
-// @Param        id   path      int  true  "Contact ID"
-// @Success      200  {object}  Response{data=models.Contact}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /contacts/{id} [get]
-// @Security     BasicAuth
+//	@Summary		Get contact
+//	@Description	Get details and financial summary of a specific contact.
+//	@Tags			contacts
+//	@Produce		json
+//	@Param			id	path		int	true	"Contact ID"
+//	@Success		200	{object}	Response{data=models.Contact}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/contacts/{id} [get]
+//	@Security		BearerAuth
 func GetContact(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -60,16 +60,16 @@ func GetContact(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateContact creates a new contact
-// @Summary      Create contact
-// @Description  Create a new vendor or customer.
-// @Tags         contacts
-// @Accept       json
-// @Produce      json
-// @Param        contact  body      models.ContactInput  true  "Contact contents"
-// @Success      201      {object}  Response{data=models.Contact}
-// @Failure      400      {object}  Response{error=string}
-// @Router       /contacts [post]
-// @Security     BasicAuth
+//	@Summary		Create contact
+//	@Description	Create a new vendor or customer.
+//	@Tags			contacts
+//	@Accept			json
+//	@Produce		json
+//	@Param			contact	body		models.ContactInput	true	"Contact contents"
+//	@Success		201		{object}	Response{data=models.Contact}
+//	@Failure		400		{object}	Response{error=string}
+//	@Router			/contacts [post]
+//	@Security		BearerAuth
 func CreateContact(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	var input models.ContactInput
@@ -90,18 +90,18 @@ func CreateContact(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateContact updates an existing contact
-// @Summary      Update contact
-// @Description  Update details of an existing contact.
-// @Tags         contacts
-// @Accept       json
-// @Produce      json
-// @Param        id       path      int                  true  "Contact ID"
-// @Param        contact  body      models.ContactInput  true  "Updated contact contents"
-// @Success      200      {object}  Response{data=models.Contact}
-// @Failure      400      {object}  Response{error=string}
-// @Failure      404      {object}  Response{error=string}
-// @Router       /contacts/{id} [put]
-// @Security     BasicAuth
+//	@Summary		Update contact
+//	@Description	Update details of an existing contact.
+//	@Tags			contacts
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int					true	"Contact ID"
+//	@Param			contact	body		models.ContactInput	true	"Updated contact contents"
+//	@Success		200		{object}	Response{data=models.Contact}
+//	@Failure		400		{object}	Response{error=string}
+//	@Failure		404		{object}	Response{error=string}
+//	@Router			/contacts/{id} [put]
+//	@Security		BearerAuth
 func UpdateContact(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -127,15 +127,15 @@ func UpdateContact(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteContact deletes a contact
-// @Summary      Delete contact
-// @Description  Remove a contact.
-// @Tags         contacts
-// @Produce      json
-// @Param        id   path      int  true  "Contact ID"
-// @Success      200  {object}  Response{data=map[string]string}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /contacts/{id} [delete]
-// @Security     BasicAuth
+//	@Summary		Delete contact
+//	@Description	Remove a contact.
+//	@Tags			contacts
+//	@Produce		json
+//	@Param			id	path		int	true	"Contact ID"
+//	@Success		200	{object}	Response{data=map[string]string}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/contacts/{id} [delete]
+//	@Security		BearerAuth
 func DeleteContact(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))

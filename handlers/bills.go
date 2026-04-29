@@ -13,15 +13,15 @@ import (
 )
 
 // ListBills lists all bills
-// @Summary      List bills
-// @Description  Get a list of all payable bills, with current status and allocation info.
-// @Tags         bills
-// @Produce      json
-// @Param        contact_id   query     int  false  "Filter by contact (vendor)"
-// @Param        search       query     string  false  "Search by bill number, notes, or vendor name"
-// @Success      200          {object}  Response{data=[]models.Bill}
-// @Router       /bills [get]
-// @Security     BasicAuth
+//	@Summary		List bills
+//	@Description	Get a list of all payable bills, with current status and allocation info.
+//	@Tags			bills
+//	@Produce		json
+//	@Param			contact_id	query		int		false	"Filter by contact (vendor)"
+//	@Param			search		query		string	false	"Search by bill number, notes, or vendor name"
+//	@Success		200			{object}	Response{data=[]models.Bill}
+//	@Router			/bills [get]
+//	@Security		BearerAuth
 func ListBills(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	bills, err := s.ListBills(
@@ -39,15 +39,15 @@ func ListBills(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetBill retrieves a single bill by ID
-// @Summary      Get bill
-// @Description  Get details and allocation status of a specific bill.
-// @Tags         bills
-// @Produce      json
-// @Param        id   path      int  true  "Bill ID"
-// @Success      200  {object}  Response{data=models.Bill}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /bills/{id} [get]
-// @Security     BasicAuth
+//	@Summary		Get bill
+//	@Description	Get details and allocation status of a specific bill.
+//	@Tags			bills
+//	@Produce		json
+//	@Param			id	path		int	true	"Bill ID"
+//	@Success		200	{object}	Response{data=models.Bill}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/bills/{id} [get]
+//	@Security		BearerAuth
 func GetBill(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -64,16 +64,16 @@ func GetBill(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateBill creates a new bill
-// @Summary      Create bill
-// @Description  Create a new payable bill.
-// @Tags         bills
-// @Accept       json
-// @Produce      json
-// @Param        bill  body      models.BillInput  true  "Bill contents"
-// @Success      201   {object}  Response{data=models.Bill}
-// @Failure      400   {object}  Response{error=string}
-// @Router       /bills [post]
-// @Security     BasicAuth
+//	@Summary		Create bill
+//	@Description	Create a new payable bill.
+//	@Tags			bills
+//	@Accept			json
+//	@Produce		json
+//	@Param			bill	body		models.BillInput	true	"Bill contents"
+//	@Success		201		{object}	Response{data=models.Bill}
+//	@Failure		400		{object}	Response{error=string}
+//	@Router			/bills [post]
+//	@Security		BearerAuth
 func CreateBill(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	var input models.BillInput
@@ -94,18 +94,18 @@ func CreateBill(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateBill updates an existing bill
-// @Summary      Update bill
-// @Description  Update details of an existing bill.
-// @Tags         bills
-// @Accept       json
-// @Produce      json
-// @Param        id    path      int               true  "Bill ID"
-// @Param        bill  body      models.BillInput  true  "Updated bill contents"
-// @Success      200   {object}  Response{data=models.Bill}
-// @Failure      400   {object}  Response{error=string}
-// @Failure      404   {object}  Response{error=string}
-// @Router       /bills/{id} [put]
-// @Security     BasicAuth
+//	@Summary		Update bill
+//	@Description	Update details of an existing bill.
+//	@Tags			bills
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int					true	"Bill ID"
+//	@Param			bill	body		models.BillInput	true	"Updated bill contents"
+//	@Success		200		{object}	Response{data=models.Bill}
+//	@Failure		400		{object}	Response{error=string}
+//	@Failure		404		{object}	Response{error=string}
+//	@Router			/bills/{id} [put]
+//	@Security		BearerAuth
 func UpdateBill(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -131,15 +131,15 @@ func UpdateBill(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteBill deletes a bill
-// @Summary      Delete bill
-// @Description  Remove a bill.
-// @Tags         bills
-// @Produce      json
-// @Param        id   path      int  true  "Bill ID"
-// @Success      200  {object}  Response{data=map[string]string}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /bills/{id} [delete]
-// @Security     BasicAuth
+//	@Summary		Delete bill
+//	@Description	Remove a bill.
+//	@Tags			bills
+//	@Produce		json
+//	@Param			id	path		int	true	"Bill ID"
+//	@Success		200	{object}	Response{data=map[string]string}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/bills/{id} [delete]
+//	@Security		BearerAuth
 func DeleteBill(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -155,14 +155,14 @@ func DeleteBill(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetBillLinks retrieves all transactions associated with a bill
-// @Summary      Get bill links
-// @Description  Get all payment transactions linked to a specific bill.
-// @Tags         bills
-// @Produce      json
-// @Param        id   path      int  true  "Bill ID"
-// @Success      200  {object}  Response{data=[]BillLink}
-// @Router       /bills/{id}/links [get]
-// @Security     BasicAuth
+//	@Summary		Get bill links
+//	@Description	Get all payment transactions linked to a specific bill.
+//	@Tags			bills
+//	@Produce		json
+//	@Param			id	path		int	true	"Bill ID"
+//	@Success		200	{object}	Response{data=[]BillLink}
+//	@Router			/bills/{id}/links [get]
+//	@Security		BearerAuth
 func GetBillLinks(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -178,15 +178,15 @@ func GetBillLinks(w http.ResponseWriter, r *http.Request) {
 type BillLink = store.BillLink
 
 // ListBillItems lists all line items for a bill
-// @Summary      List bill items
-// @Description  Get all line items for a specific bill.
-// @Tags         bills
-// @Produce      json
-// @Param        id   path      int  true  "Bill ID"
-// @Success      200  {object}  Response{data=[]models.BillItem}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /bills/{id}/items [get]
-// @Security     BasicAuth
+//	@Summary		List bill items
+//	@Description	Get all line items for a specific bill.
+//	@Tags			bills
+//	@Produce		json
+//	@Param			id	path		int	true	"Bill ID"
+//	@Success		200	{object}	Response{data=[]models.BillItem}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/bills/{id}/items [get]
+//	@Security		BearerAuth
 func ListBillItems(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -210,18 +210,18 @@ func ListBillItems(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateBillItem creates a new line item for a bill
-// @Summary      Create bill item
-// @Description  Add a new line item to an existing bill.
-// @Tags         bills
-// @Accept       json
-// @Produce      json
-// @Param        id    path      int                    true  "Bill ID"
-// @Param        item  body      models.BillItemInput   true  "Line item contents"
-// @Success      201   {object}  Response{data=models.BillItem}
-// @Failure      400   {object}  Response{error=string}
-// @Failure      404   {object}  Response{error=string}
-// @Router       /bills/{id}/items [post]
-// @Security     BasicAuth
+//	@Summary		Create bill item
+//	@Description	Add a new line item to an existing bill.
+//	@Tags			bills
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int						true	"Bill ID"
+//	@Param			item	body		models.BillItemInput	true	"Line item contents"
+//	@Success		201		{object}	Response{data=models.BillItem}
+//	@Failure		400		{object}	Response{error=string}
+//	@Failure		404		{object}	Response{error=string}
+//	@Router			/bills/{id}/items [post]
+//	@Security		BearerAuth
 func CreateBillItem(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	billID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -255,19 +255,19 @@ func CreateBillItem(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateBillItem updates a line item for a bill
-// @Summary      Update bill item
-// @Description  Update an existing line item in a bill.
-// @Tags         bills
-// @Accept       json
-// @Produce      json
-// @Param        id      path      int                   true  "Bill ID"
-// @Param        itemId  path      int                   true  "Item ID"
-// @Param        item    body      models.BillItemInput  true  "Updated line item contents"
-// @Success      200     {object}  Response{data=models.BillItem}
-// @Failure      400     {object}  Response{error=string}
-// @Failure      404     {object}  Response{error=string}
-// @Router       /bills/{id}/items/{itemId} [put]
-// @Security     BasicAuth
+//	@Summary		Update bill item
+//	@Description	Update an existing line item in a bill.
+//	@Tags			bills
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int						true	"Bill ID"
+//	@Param			itemId	path		int						true	"Item ID"
+//	@Param			item	body		models.BillItemInput	true	"Updated line item contents"
+//	@Success		200		{object}	Response{data=models.BillItem}
+//	@Failure		400		{object}	Response{error=string}
+//	@Failure		404		{object}	Response{error=string}
+//	@Router			/bills/{id}/items/{itemId} [put]
+//	@Security		BearerAuth
 func UpdateBillItem(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	billID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -296,16 +296,16 @@ func UpdateBillItem(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteBillItem deletes a line item from a bill
-// @Summary      Delete bill item
-// @Description  Remove a line item from a bill.
-// @Tags         bills
-// @Produce      json
-// @Param        id      path      int  true  "Bill ID"
-// @Param        itemId  path      int  true  "Item ID"
-// @Success      200     {object}  Response{data=map[string]string}
-// @Failure      404     {object}  Response{error=string}
-// @Router       /bills/{id}/items/{itemId} [delete]
-// @Security     BasicAuth
+//	@Summary		Delete bill item
+//	@Description	Remove a line item from a bill.
+//	@Tags			bills
+//	@Produce		json
+//	@Param			id		path		int	true	"Bill ID"
+//	@Param			itemId	path		int	true	"Item ID"
+//	@Success		200		{object}	Response{data=map[string]string}
+//	@Failure		404		{object}	Response{error=string}
+//	@Router			/bills/{id}/items/{itemId} [delete]
+//	@Security		BearerAuth
 func DeleteBillItem(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	billID, _ := strconv.Atoi(chi.URLParam(r, "id"))

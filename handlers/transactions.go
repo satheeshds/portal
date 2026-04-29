@@ -14,15 +14,15 @@ import (
 )
 
 // ListTransactions lists all transactions
-// @Summary      List transactions
-// @Description  Get a list of all bank transactions (income, expense, transfer) with allocation info.
-// @Tags         transactions
-// @Produce      json
-// @Param        account_id   query     int  false  "Filter by account"
-// @Param        contact_id   query     int  false  "Filter by contact"
-// @Success      200          {object}  Response{data=[]models.Transaction}
-// @Router       /transactions [get]
-// @Security     BasicAuth
+//	@Summary		List transactions
+//	@Description	Get a list of all bank transactions (income, expense, transfer) with allocation info.
+//	@Tags			transactions
+//	@Produce		json
+//	@Param			account_id	query		int	false	"Filter by account"
+//	@Param			contact_id	query		int	false	"Filter by contact"
+//	@Success		200			{object}	Response{data=[]models.Transaction}
+//	@Router			/transactions [get]
+//	@Security		BearerAuth
 func ListTransactions(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	txns, err := s.ListTransactions(
@@ -39,15 +39,15 @@ func ListTransactions(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetTransaction retrieves a single transaction by ID
-// @Summary      Get transaction
-// @Description  Get details and allocation status of a specific transaction.
-// @Tags         transactions
-// @Produce      json
-// @Param        id   path      int  true  "Transaction ID"
-// @Success      200  {object}  Response{data=models.Transaction}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /transactions/{id} [get]
-// @Security     BasicAuth
+//	@Summary		Get transaction
+//	@Description	Get details and allocation status of a specific transaction.
+//	@Tags			transactions
+//	@Produce		json
+//	@Param			id	path		int	true	"Transaction ID"
+//	@Success		200	{object}	Response{data=models.Transaction}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/transactions/{id} [get]
+//	@Security		BearerAuth
 func GetTransaction(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -60,15 +60,15 @@ func GetTransaction(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateTransaction creates a new transaction
-// @Summary      Create transaction
-// @Description  Create a new bank transaction (income, expense, or transfer).
-// @Tags         transactions
-// @Accept       json
-// @Produce      json
-// @Param        transaction  body      models.TransactionInput  true  "Transaction contents"
-// @Success      201          {object}  Response{data=models.Transaction}
-// @Router       /transactions [post]
-// @Security     BasicAuth
+//	@Summary		Create transaction
+//	@Description	Create a new bank transaction (income, expense, or transfer).
+//	@Tags			transactions
+//	@Accept			json
+//	@Produce		json
+//	@Param			transaction	body		models.TransactionInput	true	"Transaction contents"
+//	@Success		201			{object}	Response{data=models.Transaction}
+//	@Router			/transactions [post]
+//	@Security		BearerAuth
 func CreateTransaction(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	var input models.TransactionInput
@@ -89,17 +89,17 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateTransaction updates an existing transaction
-// @Summary      Update transaction
-// @Description  Update details of an existing transaction.
-// @Tags         transactions
-// @Accept       json
-// @Produce      json
-// @Param        id           path      int                      true  "Transaction ID"
-// @Param        transaction  body      models.TransactionInput  true  "Updated transaction contents"
-// @Success      200          {object}  Response{data=models.Transaction}
-// @Failure      404          {object}  Response{error=string}
-// @Router       /transactions/{id} [put]
-// @Security     BasicAuth
+//	@Summary		Update transaction
+//	@Description	Update details of an existing transaction.
+//	@Tags			transactions
+//	@Accept			json
+//	@Produce		json
+//	@Param			id			path		int						true	"Transaction ID"
+//	@Param			transaction	body		models.TransactionInput	true	"Updated transaction contents"
+//	@Success		200			{object}	Response{data=models.Transaction}
+//	@Failure		404			{object}	Response{error=string}
+//	@Router			/transactions/{id} [put]
+//	@Security		BearerAuth
 func UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -125,15 +125,15 @@ func UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteTransaction deletes a transaction
-// @Summary      Delete transaction
-// @Description  Remove a transaction.
-// @Tags         transactions
-// @Produce      json
-// @Param        id   path      int  true  "Transaction ID"
-// @Success      200  {object}  Response{data=map[string]string}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /transactions/{id} [delete]
-// @Security     BasicAuth
+//	@Summary		Delete transaction
+//	@Description	Remove a transaction.
+//	@Tags			transactions
+//	@Produce		json
+//	@Param			id	path		int	true	"Transaction ID"
+//	@Success		200	{object}	Response{data=map[string]string}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/transactions/{id} [delete]
+//	@Security		BearerAuth
 func DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -151,14 +151,14 @@ func DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 // --- Transaction Document Linking ---
 
 // ListTransactionLinks lists all documents linked to a transaction
-// @Summary      List transaction links
-// @Description  Get all bills and invoices linked (paid) by this transaction.
-// @Tags         transactions
-// @Produce      json
-// @Param        id   path      int  true  "Transaction ID"
-// @Success      200  {object}  Response{data=[]models.TransactionDocument}
-// @Router       /transactions/{id}/links [get]
-// @Security     BasicAuth
+//	@Summary		List transaction links
+//	@Description	Get all bills and invoices linked (paid) by this transaction.
+//	@Tags			transactions
+//	@Produce		json
+//	@Param			id	path		int	true	"Transaction ID"
+//	@Success		200	{object}	Response{data=[]models.TransactionDocument}
+//	@Router			/transactions/{id}/links [get]
+//	@Security		BearerAuth
 func ListTransactionLinks(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -171,16 +171,16 @@ func ListTransactionLinks(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateTransactionLink links a transaction to a bill or invoice
-// @Summary      Create transaction link
-// @Description  Allocate an amount from a transaction to a specific bill or invoice.
-// @Tags         transactions
-// @Accept       json
-// @Produce      json
-// @Param        id    path      int                            true  "Transaction ID"
-// @Param        link  body      models.TransactionDocumentInput true "Link details"
-// @Success      201   {object}  Response{data=models.TransactionDocument}
-// @Router       /transactions/{id}/links [post]
-// @Security     BasicAuth
+//	@Summary		Create transaction link
+//	@Description	Allocate an amount from a transaction to a specific bill or invoice.
+//	@Tags			transactions
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int								true	"Transaction ID"
+//	@Param			link	body		models.TransactionDocumentInput	true	"Link details"
+//	@Success		201		{object}	Response{data=models.TransactionDocument}
+//	@Router			/transactions/{id}/links [post]
+//	@Security		BearerAuth
 func CreateTransactionLink(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -233,15 +233,15 @@ func CreateTransactionLink(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteTransactionLink removes a link between a transaction and a document
-// @Summary      Delete transaction link
-// @Description  Deallocate an amount from a transaction to a bill or invoice.
-// @Tags         transactions
-// @Produce      json
-// @Param        id       path      int  true  "Transaction ID"
-// @Param        linkId   path      int  true  "Link ID"
-// @Success      200      {object}  Response{data=map[string]string}
-// @Router       /transactions/{id}/links/{linkId} [delete]
-// @Security     BasicAuth
+//	@Summary		Delete transaction link
+//	@Description	Deallocate an amount from a transaction to a bill or invoice.
+//	@Tags			transactions
+//	@Produce		json
+//	@Param			id		path		int	true	"Transaction ID"
+//	@Param			linkId	path		int	true	"Link ID"
+//	@Success		200		{object}	Response{data=map[string]string}
+//	@Router			/transactions/{id}/links/{linkId} [delete]
+//	@Security		BearerAuth
 func DeleteTransactionLink(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))

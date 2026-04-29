@@ -145,8 +145,11 @@ func BearerAuth(next http.Handler) http.Handler {
 			authHeader := r.Header.Get("Authorization")
 
 			// ── JWT Bearer token ──────────────────────────────────────────────
-			if len(authHeader) >= 8 && authHeader[:7] == "Bearer " {
-				token := authHeader[7:]
+			// Accept both "Bearer <token>" and a raw token (e.g. from Swagger UI
+			// apiKey auth which sends the header value as-is without the prefix).
+			// Basic auth headers are left to the service-account path below.
+			token := strings.TrimPrefix(authHeader, "Bearer ")
+			if token != "" && !strings.HasPrefix(authHeader, "Basic ") {
 				if !validateNexusToken(token) {
 					writeError(w, http.StatusUnauthorized, "unauthorized")
 					return

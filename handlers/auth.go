@@ -37,18 +37,18 @@ var nexusRegisterClient = &http.Client{
 // Register provisions a new tenant via nexus-control and then initialises the
 // portal schema and occurrence generation for that tenant.
 //
-// @Summary      Register a new tenant
-// @Description  Provisions a tenant via the Nexus gateway and initialises the portal schema. Requires NEXUS_CONTROL_URL and ADMIN_API_KEY to be configured.
-// @Tags         auth
-// @Accept       json
-// @Produce      json
-// @Param        body  body      registerRequest  true  "Registration data"
-// @Success      201   {object}  map[string]string
-// @Failure      400   {object}  Response
-// @Failure      409   {object}  Response
-// @Failure      500   {object}  Response
-// @Failure      502   {object}  Response
-// @Router       /api/auth/register [post]
+//	@Summary		Register a new tenant
+//	@Description	Provisions a tenant via the Nexus gateway and initialises the portal schema. Requires NEXUS_CONTROL_URL and ADMIN_API_KEY to be configured.
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		registerRequest	true	"Registration data"
+//	@Success		201		{object}	map[string]string
+//	@Failure		400		{object}	Response
+//	@Failure		409		{object}	Response
+//	@Failure		500		{object}	Response
+//	@Failure		502		{object}	Response
+//	@Router			/auth/register [post]
 func Register(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 	if err != nil {
@@ -154,17 +154,17 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 // Login proxies a login request to the Nexus gateway and returns the JWT token.
 //
-// @Summary      Login
-// @Description  Authenticates with the Nexus gateway using email and password. Returns a JWT token.
-// @Tags         auth
-// @Accept       json
-// @Produce      json
-// @Param        body  body      loginRequest  true  "Login credentials"
-// @Success      200   {object}  map[string]string
-// @Failure      400   {object}  Response
-// @Failure      401   {object}  Response
-// @Failure      502   {object}  Response
-// @Router       /api/auth/login [post]
+//	@Summary		Login
+//	@Description	Authenticates with the Nexus gateway using email and password. Returns a JWT token.
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		loginRequest	true	"Login credentials"
+//	@Success		200		{object}	map[string]string
+//	@Failure		400		{object}	Response
+//	@Failure		401		{object}	Response
+//	@Failure		502		{object}	Response
+//	@Router			/auth/login [post]
 func Login(w http.ResponseWriter, r *http.Request) {
 	base := cfg.NexusControlURL
 	if base == "" {

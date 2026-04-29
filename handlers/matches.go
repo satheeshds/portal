@@ -41,15 +41,15 @@ type AutoMatchResult struct {
 }
 
 // SuggestMatches returns matching document suggestions for a bank statement entry.
-// @Summary      Suggest document matches for a transaction
-// @Description  Returns a ranked list of bills, invoices, payouts, and recurring payments that could match a bank statement entry, scored by amount, date, and description similarity. Expense transactions match against bills; income transactions match against invoices and payouts. Recurring payments are suggested for both types as informational matches (linkable=false).
-// @Tags         transactions
-// @Produce      json
-// @Param        id   path      int  true  "Transaction ID"
-// @Success      200  {object}  Response{data=[]MatchSuggestion}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /transactions/{id}/match-suggestions [get]
-// @Security     BasicAuth
+//	@Summary		Suggest document matches for a transaction
+//	@Description	Returns a ranked list of bills, invoices, payouts, and recurring payments that could match a bank statement entry, scored by amount, date, and description similarity. Expense transactions match against bills; income transactions match against invoices and payouts. Recurring payments are suggested for both types as informational matches (linkable=false).
+//	@Tags			transactions
+//	@Produce		json
+//	@Param			id	path		int	true	"Transaction ID"
+//	@Success		200	{object}	Response{data=[]MatchSuggestion}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/transactions/{id}/match-suggestions [get]
+//	@Security		BearerAuth
 func SuggestMatches(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -86,15 +86,15 @@ func SuggestMatches(w http.ResponseWriter, r *http.Request) {
 }
 
 // AutoMatch automatically links a transaction to the best matching document.
-// @Summary      Auto-match a transaction to a document
-// @Description  Finds the best matching bill, invoice, or payout for a bank statement entry and automatically creates a transaction link when confidence is at least 0.7. Returns the created link on success, or the top suggestion without linking when confidence is below the threshold.
-// @Tags         transactions
-// @Produce      json
-// @Param        id   path      int  true  "Transaction ID"
-// @Success      200  {object}  Response{data=AutoMatchResult}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /transactions/{id}/auto-match [post]
-// @Security     BasicAuth
+//	@Summary		Auto-match a transaction to a document
+//	@Description	Finds the best matching bill, invoice, or payout for a bank statement entry and automatically creates a transaction link when confidence is at least 0.7. Returns the created link on success, or the top suggestion without linking when confidence is below the threshold.
+//	@Tags			transactions
+//	@Produce		json
+//	@Param			id	path		int	true	"Transaction ID"
+//	@Success		200	{object}	Response{data=AutoMatchResult}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/transactions/{id}/auto-match [post]
+//	@Security		BearerAuth
 func AutoMatch(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	txnID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -511,15 +511,15 @@ func getDocumentAllocated(s *store.Store, docType string, docID int) models.Mone
 }
 
 // SuggestTransactionsForBill returns ranked bank transaction suggestions for a specific bill.
-// @Summary      Suggest transactions for a bill
-// @Description  Returns a ranked list of unallocated bank transactions that could match a bill, scored by amount, date, and description similarity. Already-linked transactions are excluded.
-// @Tags         bills
-// @Produce      json
-// @Param        id   path      int  true  "Bill ID"
-// @Success      200  {object}  Response{data=[]TransactionSuggestion}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /bills/{id}/match-suggestions [get]
-// @Security     BasicAuth
+//	@Summary		Suggest transactions for a bill
+//	@Description	Returns a ranked list of unallocated bank transactions that could match a bill, scored by amount, date, and description similarity. Already-linked transactions are excluded.
+//	@Tags			bills
+//	@Produce		json
+//	@Param			id	path		int	true	"Bill ID"
+//	@Success		200	{object}	Response{data=[]TransactionSuggestion}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/bills/{id}/match-suggestions [get]
+//	@Security		BearerAuth
 func SuggestTransactionsForBill(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	billID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -554,15 +554,15 @@ func SuggestTransactionsForBill(w http.ResponseWriter, r *http.Request) {
 }
 
 // SuggestTransactionsForInvoice returns ranked bank transaction suggestions for a specific invoice.
-// @Summary      Suggest transactions for an invoice
-// @Description  Returns a ranked list of unallocated bank transactions that could match an invoice, scored by amount, date, and description similarity. Already-linked transactions are excluded.
-// @Tags         invoices
-// @Produce      json
-// @Param        id   path      int  true  "Invoice ID"
-// @Success      200  {object}  Response{data=[]TransactionSuggestion}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /invoices/{id}/match-suggestions [get]
-// @Security     BasicAuth
+//	@Summary		Suggest transactions for an invoice
+//	@Description	Returns a ranked list of unallocated bank transactions that could match an invoice, scored by amount, date, and description similarity. Already-linked transactions are excluded.
+//	@Tags			invoices
+//	@Produce		json
+//	@Param			id	path		int	true	"Invoice ID"
+//	@Success		200	{object}	Response{data=[]TransactionSuggestion}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/invoices/{id}/match-suggestions [get]
+//	@Security		BearerAuth
 func SuggestTransactionsForInvoice(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	invoiceID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -597,15 +597,15 @@ func SuggestTransactionsForInvoice(w http.ResponseWriter, r *http.Request) {
 }
 
 // SuggestTransactionsForPayout returns ranked bank transaction suggestions for a specific payout.
-// @Summary      Suggest transactions for a payout
-// @Description  Returns a ranked list of unallocated bank transactions that could match a payout, scored by amount, date, and UTR/description similarity. Already-linked transactions are excluded.
-// @Tags         payouts
-// @Produce      json
-// @Param        id   path      int  true  "Payout ID"
-// @Success      200  {object}  Response{data=[]TransactionSuggestion}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /payouts/{id}/match-suggestions [get]
-// @Security     BasicAuth
+//	@Summary		Suggest transactions for a payout
+//	@Description	Returns a ranked list of unallocated bank transactions that could match a payout, scored by amount, date, and UTR/description similarity. Already-linked transactions are excluded.
+//	@Tags			payouts
+//	@Produce		json
+//	@Param			id	path		int	true	"Payout ID"
+//	@Success		200	{object}	Response{data=[]TransactionSuggestion}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/payouts/{id}/match-suggestions [get]
+//	@Security		BearerAuth
 func SuggestTransactionsForPayout(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	payoutID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -715,15 +715,15 @@ func suggestTransactionsForDocumentStore(s *store.Store, txnType, docType string
 }
 
 // SuggestTransactionsForRecurringPayment returns ranked bank transaction suggestions for a recurring payment.
-// @Summary      Suggest transactions for a recurring payment
-// @Description  Returns a ranked list of bank transactions that could correspond to a recurring payment occurrence, scored by amount (±2% tolerance), date proximity to next_due_date, and description/reference similarity. Excludes transactions already linked to this recurring payment.
-// @Tags         recurring_payments
-// @Produce      json
-// @Param        id   path      int  true  "Recurring Payment ID"
-// @Success      200  {object}  Response{data=[]TransactionSuggestion}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /recurring-payments/{id}/match-suggestions [get]
-// @Security     BasicAuth
+//	@Summary		Suggest transactions for a recurring payment
+//	@Description	Returns a ranked list of bank transactions that could correspond to a recurring payment occurrence, scored by amount (±2% tolerance), date proximity to next_due_date, and description/reference similarity. Excludes transactions already linked to this recurring payment.
+//	@Tags			recurring_payments
+//	@Produce		json
+//	@Param			id	path		int	true	"Recurring Payment ID"
+//	@Success		200	{object}	Response{data=[]TransactionSuggestion}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/recurring-payments/{id}/match-suggestions [get]
+//	@Security		BearerAuth
 func SuggestTransactionsForRecurringPayment(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	rpID, _ := strconv.Atoi(chi.URLParam(r, "id"))

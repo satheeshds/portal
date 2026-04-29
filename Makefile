@@ -36,3 +36,6 @@ build: ## Build the Go binary
 
 test: ## Run Go tests
 	go test ./...
+
+swag-init: ## Initialize Swagger
+	swag init

@@ -13,15 +13,15 @@ import (
 )
 
 // ListInvoices lists all invoices
-// @Summary      List invoices
-// @Description  Get a list of all receivable invoices, with current status and allocation info.
-// @Tags         invoices
-// @Produce      json
-// @Param        contact_id   query     int  false  "Filter by contact (customer)"
-// @Param        search       query     string  false  "Search by invoice number, notes, or customer name"
-// @Success      200          {object}  Response{data=[]models.Invoice}
-// @Router       /invoices [get]
-// @Security     BasicAuth
+//	@Summary		List invoices
+//	@Description	Get a list of all receivable invoices, with current status and allocation info.
+//	@Tags			invoices
+//	@Produce		json
+//	@Param			contact_id	query		int		false	"Filter by contact (customer)"
+//	@Param			search		query		string	false	"Search by invoice number, notes, or customer name"
+//	@Success		200			{object}	Response{data=[]models.Invoice}
+//	@Router			/invoices [get]
+//	@Security		BearerAuth
 func ListInvoices(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	invoices, err := s.ListInvoices(
@@ -39,15 +39,15 @@ func ListInvoices(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetInvoice retrieves a single invoice by ID
-// @Summary      Get invoice
-// @Description  Get details and allocation status of a specific invoice.
-// @Tags         invoices
-// @Produce      json
-// @Param        id   path      int  true  "Invoice ID"
-// @Success      200  {object}  Response{data=models.Invoice}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /invoices/{id} [get]
-// @Security     BasicAuth
+//	@Summary		Get invoice
+//	@Description	Get details and allocation status of a specific invoice.
+//	@Tags			invoices
+//	@Produce		json
+//	@Param			id	path		int	true	"Invoice ID"
+//	@Success		200	{object}	Response{data=models.Invoice}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/invoices/{id} [get]
+//	@Security		BearerAuth
 func GetInvoice(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -64,16 +64,16 @@ func GetInvoice(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateInvoice creates a new invoice
-// @Summary      Create invoice
-// @Description  Create a new receivable invoice.
-// @Tags         invoices
-// @Accept       json
-// @Produce      json
-// @Param        invoice  body      models.InvoiceInput  true  "Invoice contents"
-// @Success      201      {object}  Response{data=models.Invoice}
-// @Failure      400      {object}  Response{error=string}
-// @Router       /invoices [post]
-// @Security     BasicAuth
+//	@Summary		Create invoice
+//	@Description	Create a new receivable invoice.
+//	@Tags			invoices
+//	@Accept			json
+//	@Produce		json
+//	@Param			invoice	body		models.InvoiceInput	true	"Invoice contents"
+//	@Success		201		{object}	Response{data=models.Invoice}
+//	@Failure		400		{object}	Response{error=string}
+//	@Router			/invoices [post]
+//	@Security		BearerAuth
 func CreateInvoice(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	var input models.InvoiceInput
@@ -94,18 +94,18 @@ func CreateInvoice(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateInvoice updates an existing invoice
-// @Summary      Update invoice
-// @Description  Update details of an existing invoice.
-// @Tags         invoices
-// @Accept       json
-// @Produce      json
-// @Param        id       path      int                  true  "Invoice ID"
-// @Param        invoice  body      models.InvoiceInput  true  "Updated invoice contents"
-// @Success      200      {object}  Response{data=models.Invoice}
-// @Failure      400      {object}  Response{error=string}
-// @Failure      404      {object}  Response{error=string}
-// @Router       /invoices/{id} [put]
-// @Security     BasicAuth
+//	@Summary		Update invoice
+//	@Description	Update details of an existing invoice.
+//	@Tags			invoices
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int					true	"Invoice ID"
+//	@Param			invoice	body		models.InvoiceInput	true	"Updated invoice contents"
+//	@Success		200		{object}	Response{data=models.Invoice}
+//	@Failure		400		{object}	Response{error=string}
+//	@Failure		404		{object}	Response{error=string}
+//	@Router			/invoices/{id} [put]
+//	@Security		BearerAuth
 func UpdateInvoice(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -131,15 +131,15 @@ func UpdateInvoice(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteInvoice deletes an invoice
-// @Summary      Delete invoice
-// @Description  Remove an invoice.
-// @Tags         invoices
-// @Produce      json
-// @Param        id   path      int  true  "Invoice ID"
-// @Success      200  {object}  Response{data=map[string]string}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /invoices/{id} [delete]
-// @Security     BasicAuth
+//	@Summary		Delete invoice
+//	@Description	Remove an invoice.
+//	@Tags			invoices
+//	@Produce		json
+//	@Param			id	path		int	true	"Invoice ID"
+//	@Success		200	{object}	Response{data=map[string]string}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/invoices/{id} [delete]
+//	@Security		BearerAuth
 func DeleteInvoice(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -155,14 +155,14 @@ func DeleteInvoice(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetInvoiceLinks retrieves all transactions associated with an invoice
-// @Summary      Get invoice links
-// @Description  Get all payment transactions linked to a specific invoice.
-// @Tags         invoices
-// @Produce      json
-// @Param        id   path      int  true  "Invoice ID"
-// @Success      200  {object}  Response{data=[]InvoiceLink}
-// @Router       /invoices/{id}/links [get]
-// @Security     BasicAuth
+//	@Summary		Get invoice links
+//	@Description	Get all payment transactions linked to a specific invoice.
+//	@Tags			invoices
+//	@Produce		json
+//	@Param			id	path		int	true	"Invoice ID"
+//	@Success		200	{object}	Response{data=[]InvoiceLink}
+//	@Router			/invoices/{id}/links [get]
+//	@Security		BearerAuth
 func GetInvoiceLinks(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -178,15 +178,15 @@ func GetInvoiceLinks(w http.ResponseWriter, r *http.Request) {
 type InvoiceLink = store.InvoiceLink
 
 // ListInvoiceItems lists all line items for an invoice
-// @Summary      List invoice items
-// @Description  Get all line items for a specific invoice.
-// @Tags         invoices
-// @Produce      json
-// @Param        id   path      int  true  "Invoice ID"
-// @Success      200  {object}  Response{data=[]models.InvoiceItem}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /invoices/{id}/items [get]
-// @Security     BasicAuth
+//	@Summary		List invoice items
+//	@Description	Get all line items for a specific invoice.
+//	@Tags			invoices
+//	@Produce		json
+//	@Param			id	path		int	true	"Invoice ID"
+//	@Success		200	{object}	Response{data=[]models.InvoiceItem}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/invoices/{id}/items [get]
+//	@Security		BearerAuth
 func ListInvoiceItems(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -210,18 +210,18 @@ func ListInvoiceItems(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateInvoiceItem creates a new line item for an invoice
-// @Summary      Create invoice item
-// @Description  Add a new line item to an existing invoice.
-// @Tags         invoices
-// @Accept       json
-// @Produce      json
-// @Param        id    path      int                      true  "Invoice ID"
-// @Param        item  body      models.InvoiceItemInput  true  "Line item contents"
-// @Success      201   {object}  Response{data=models.InvoiceItem}
-// @Failure      400   {object}  Response{error=string}
-// @Failure      404   {object}  Response{error=string}
-// @Router       /invoices/{id}/items [post]
-// @Security     BasicAuth
+//	@Summary		Create invoice item
+//	@Description	Add a new line item to an existing invoice.
+//	@Tags			invoices
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int						true	"Invoice ID"
+//	@Param			item	body		models.InvoiceItemInput	true	"Line item contents"
+//	@Success		201		{object}	Response{data=models.InvoiceItem}
+//	@Failure		400		{object}	Response{error=string}
+//	@Failure		404		{object}	Response{error=string}
+//	@Router			/invoices/{id}/items [post]
+//	@Security		BearerAuth
 func CreateInvoiceItem(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	invoiceID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -255,19 +255,19 @@ func CreateInvoiceItem(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateInvoiceItem updates a line item for an invoice
-// @Summary      Update invoice item
-// @Description  Update an existing line item in an invoice.
-// @Tags         invoices
-// @Accept       json
-// @Produce      json
-// @Param        id      path      int                      true  "Invoice ID"
-// @Param        itemId  path      int                      true  "Item ID"
-// @Param        item    body      models.InvoiceItemInput  true  "Updated line item contents"
-// @Success      200     {object}  Response{data=models.InvoiceItem}
-// @Failure      400     {object}  Response{error=string}
-// @Failure      404     {object}  Response{error=string}
-// @Router       /invoices/{id}/items/{itemId} [put]
-// @Security     BasicAuth
+//	@Summary		Update invoice item
+//	@Description	Update an existing line item in an invoice.
+//	@Tags			invoices
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int						true	"Invoice ID"
+//	@Param			itemId	path		int						true	"Item ID"
+//	@Param			item	body		models.InvoiceItemInput	true	"Updated line item contents"
+//	@Success		200		{object}	Response{data=models.InvoiceItem}
+//	@Failure		400		{object}	Response{error=string}
+//	@Failure		404		{object}	Response{error=string}
+//	@Router			/invoices/{id}/items/{itemId} [put]
+//	@Security		BearerAuth
 func UpdateInvoiceItem(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	invoiceID, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -296,16 +296,16 @@ func UpdateInvoiceItem(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteInvoiceItem deletes a line item from an invoice
-// @Summary      Delete invoice item
-// @Description  Remove a line item from an invoice.
-// @Tags         invoices
-// @Produce      json
-// @Param        id      path      int  true  "Invoice ID"
-// @Param        itemId  path      int  true  "Item ID"
-// @Success      200     {object}  Response{data=map[string]string}
-// @Failure      404     {object}  Response{error=string}
-// @Router       /invoices/{id}/items/{itemId} [delete]
-// @Security     BasicAuth
+//	@Summary		Delete invoice item
+//	@Description	Remove a line item from an invoice.
+//	@Tags			invoices
+//	@Produce		json
+//	@Param			id		path		int	true	"Invoice ID"
+//	@Param			itemId	path		int	true	"Item ID"
+//	@Success		200		{object}	Response{data=map[string]string}
+//	@Failure		404		{object}	Response{error=string}
+//	@Router			/invoices/{id}/items/{itemId} [delete]
+//	@Security		BearerAuth
 func DeleteInvoiceItem(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	invoiceID, _ := strconv.Atoi(chi.URLParam(r, "id"))

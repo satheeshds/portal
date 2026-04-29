@@ -13,17 +13,17 @@ import (
 )
 
 // ListPayouts lists all payouts
-// @Summary      List payouts
-// @Description  Get a list of all platform payouts (Swiggy, Zomato, Swiggy-Dineout).
-// @Tags         payouts
-// @Produce      json
-// @Param        platform     query     string  false  "Filter by platform (Swiggy, Zomato, Swiggy-Dineout)"
-// @Param        outlet_name  query     string  false  "Filter by outlet name"
-// @Param        from         query     string  false  "Filter by settlement date from (YYYY-MM-DD)"
-// @Param        to           query     string  false  "Filter by settlement date to (YYYY-MM-DD)"
-// @Success      200          {object}  Response{data=[]models.Payout}
-// @Router       /payouts [get]
-// @Security     BasicAuth
+//	@Summary		List payouts
+//	@Description	Get a list of all platform payouts (Swiggy, Zomato, Swiggy-Dineout).
+//	@Tags			payouts
+//	@Produce		json
+//	@Param			platform	query		string	false	"Filter by platform (Swiggy, Zomato, Swiggy-Dineout)"
+//	@Param			outlet_name	query		string	false	"Filter by outlet name"
+//	@Param			from		query		string	false	"Filter by settlement date from (YYYY-MM-DD)"
+//	@Param			to			query		string	false	"Filter by settlement date to (YYYY-MM-DD)"
+//	@Success		200			{object}	Response{data=[]models.Payout}
+//	@Router			/payouts [get]
+//	@Security		BearerAuth
 func ListPayouts(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	payouts, err := s.ListPayouts(
@@ -40,15 +40,15 @@ func ListPayouts(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetPayout retrieves a single payout by ID
-// @Summary      Get payout
-// @Description  Get details of a specific platform payout.
-// @Tags         payouts
-// @Produce      json
-// @Param        id   path      int  true  "Payout ID"
-// @Success      200  {object}  Response{data=models.Payout}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /payouts/{id} [get]
-// @Security     BasicAuth
+//	@Summary		Get payout
+//	@Description	Get details of a specific platform payout.
+//	@Tags			payouts
+//	@Produce		json
+//	@Param			id	path		int	true	"Payout ID"
+//	@Success		200	{object}	Response{data=models.Payout}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/payouts/{id} [get]
+//	@Security		BearerAuth
 func GetPayout(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -65,14 +65,14 @@ func GetPayout(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetPayoutLinks retrieves all transactions associated with a payout
-// @Summary      Get payout links
-// @Description  Get all payment transactions linked to a specific payout.
-// @Tags         payouts
-// @Produce      json
-// @Param        id   path      int  true  "Payout ID"
-// @Success      200  {object}  Response{data=[]PayoutLink}
-// @Router       /payouts/{id}/links [get]
-// @Security     BasicAuth
+//	@Summary		Get payout links
+//	@Description	Get all payment transactions linked to a specific payout.
+//	@Tags			payouts
+//	@Produce		json
+//	@Param			id	path		int	true	"Payout ID"
+//	@Success		200	{object}	Response{data=[]PayoutLink}
+//	@Router			/payouts/{id}/links [get]
+//	@Security		BearerAuth
 func GetPayoutLinks(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -88,16 +88,16 @@ func GetPayoutLinks(w http.ResponseWriter, r *http.Request) {
 type PayoutLink = store.PayoutLink
 
 // CreatePayout creates a new payout record
-// @Summary      Create payout
-// @Description  Create a new platform payout record.
-// @Tags         payouts
-// @Accept       json
-// @Produce      json
-// @Param        payout  body      models.PayoutInput  true  "Payout contents"
-// @Success      201     {object}  Response{data=models.Payout}
-// @Failure      400     {object}  Response{error=string}
-// @Router       /payouts [post]
-// @Security     BasicAuth
+//	@Summary		Create payout
+//	@Description	Create a new platform payout record.
+//	@Tags			payouts
+//	@Accept			json
+//	@Produce		json
+//	@Param			payout	body		models.PayoutInput	true	"Payout contents"
+//	@Success		201		{object}	Response{data=models.Payout}
+//	@Failure		400		{object}	Response{error=string}
+//	@Router			/payouts [post]
+//	@Security		BearerAuth
 func CreatePayout(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	var input models.PayoutInput
@@ -118,18 +118,18 @@ func CreatePayout(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdatePayout updates an existing payout record
-// @Summary      Update payout
-// @Description  Update details of an existing platform payout record.
-// @Tags         payouts
-// @Accept       json
-// @Produce      json
-// @Param        id      path      int                 true  "Payout ID"
-// @Param        payout  body      models.PayoutInput  true  "Updated payout contents"
-// @Success      200     {object}  Response{data=models.Payout}
-// @Failure      400     {object}  Response{error=string}
-// @Failure      404     {object}  Response{error=string}
-// @Router       /payouts/{id} [put]
-// @Security     BasicAuth
+//	@Summary		Update payout
+//	@Description	Update details of an existing platform payout record.
+//	@Tags			payouts
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int					true	"Payout ID"
+//	@Param			payout	body		models.PayoutInput	true	"Updated payout contents"
+//	@Success		200		{object}	Response{data=models.Payout}
+//	@Failure		400		{object}	Response{error=string}
+//	@Failure		404		{object}	Response{error=string}
+//	@Router			/payouts/{id} [put]
+//	@Security		BearerAuth
 func UpdatePayout(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
@@ -155,15 +155,15 @@ func UpdatePayout(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeletePayout deletes a payout record
-// @Summary      Delete payout
-// @Description  Remove a platform payout record.
-// @Tags         payouts
-// @Produce      json
-// @Param        id   path      int  true  "Payout ID"
-// @Success      200  {object}  Response{data=map[string]string}
-// @Failure      404  {object}  Response{error=string}
-// @Router       /payouts/{id} [delete]
-// @Security     BasicAuth
+//	@Summary		Delete payout
+//	@Description	Remove a platform payout record.
+//	@Tags			payouts
+//	@Produce		json
+//	@Param			id	path		int	true	"Payout ID"
+//	@Success		200	{object}	Response{data=map[string]string}
+//	@Failure		404	{object}	Response{error=string}
+//	@Router			/payouts/{id} [delete]
+//	@Security		BearerAuth
 func DeletePayout(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	id, _ := strconv.Atoi(chi.URLParam(r, "id"))

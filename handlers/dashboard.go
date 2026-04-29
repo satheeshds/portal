@@ -7,13 +7,13 @@ import (
 )
 
 // GetDashboard retrieves dashboard summary statistics
-// @Summary      Get dashboard
-// @Description  Get totals for accounts, contacts, bills, invoices, and recent transactions.
-// @Tags         dashboard
-// @Produce      json
-// @Success      200  {object}  Response{data=store.DashboardData}
-// @Router       /dashboard [get]
-// @Security     BasicAuth
+//	@Summary		Get dashboard
+//	@Description	Get totals for accounts, contacts, bills, invoices, and recent transactions.
+//	@Tags			dashboard
+//	@Produce		json
+//	@Success		200	{object}	Response{data=store.DashboardData}
+//	@Router			/dashboard [get]
+//	@Security		BearerAuth
 func GetDashboard(w http.ResponseWriter, r *http.Request) {
 	s := store.New(getDB(r))
 	d, err := s.GetDashboard()

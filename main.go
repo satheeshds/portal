@@ -14,21 +14,23 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	_ "github.com/satheeshds/portal/docs"
 	"github.com/satheeshds/portal/handlers"
-	httpSwagger "github.com/swaggo/http-swagger"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 //go:embed static/*
 var staticFiles embed.FS
 
-// @title           Portal API
-// @version         1.0.0
-// @description     API for managing accounts, contacts, bills, invoices, and transactions.
-// @host            localhost:8090
-// @BasePath        /api/v1
-// @securityDefinitions.apikey  BearerAuth
-// @in                          header
-// @name                        Authorization
+//go:embed docs/swagger.json
+var swaggerSpec []byte
 
+// @title Portal API
+// @version 1.0.0
+// @description API for managing accounts, contacts, bills, invoices, and transactions.
+// @host localhost:8090
+// @BasePath /api/v1
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	// Configure structured logging
 	level := slog.LevelInfo
@@ -47,8 +49,8 @@ func main() {
 	r.Use(middleware.Recoverer)
 
 	// Public auth routes (proxy to Nexus gateway)
-	r.Post("/api/auth/register", handlers.Register)
-	r.Post("/api/auth/login", handlers.Login)
+	r.Post("/api/v1/auth/register", handlers.Register)
+	r.Post("/api/v1/auth/login", handlers.Login)
 
 	// API routes with bearer token / basic auth
 	r.Route("/api/v1", func(r chi.Router) {
@@ -139,7 +141,13 @@ func main() {
 	r.Handle("/*", http.FileServer(http.FS(staticFS)))
 
 	// Swagger UI
-	r.Get("/swagger/*", httpSwagger.WrapHandler)
+	r.Get("/swagger/doc.json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write(swaggerSpec); err != nil {
+			http.Error(w, "failed to serve swagger spec", http.StatusInternalServerError)
+		}
+	})
+	r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL("/swagger/doc.json")))
 
 	// Start server
 	port := os.Getenv("PORT")
