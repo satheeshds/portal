@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -25,7 +26,7 @@ func setupTestRouter(t *testing.T) (*chi.Mux, func()) {
 	if err != nil {
 		t.Fatalf("open database: %v", err)
 	}
-	database := db.WrapDB(rawDB)
+	database := db.WrapDB(context.Background(), rawDB)
 	if err := db.MigrateDB(database); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}

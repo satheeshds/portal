@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"log/slog"
 	"strings"
 
 	"github.com/satheeshds/portal/db"
@@ -26,10 +27,13 @@ type BillLink struct {
 
 func scanBill(scanner interface{ Scan(...any) error }) (models.Bill, error) {
 	var b models.Bill
-	err := scanner.Scan(&b.ID, &b.ContactID, &b.BillNumber, &b.IssueDate, &b.DueDate,
+	var issueDate, dueDate nullableDate
+	err := scanner.Scan(&b.ID, &b.ContactID, &b.BillNumber, &issueDate, &dueDate,
 		&b.Amount, &b.Status, &b.FileURL, &b.Notes, &b.CreatedAt, &b.UpdatedAt,
 		&b.ContactName, &b.Allocated)
 	if err == nil {
+		b.IssueDate = issueDate.Value
+		b.DueDate = dueDate.Value
 		b.Unallocated = models.Money(int64(b.Amount) - int64(b.Allocated))
 	}
 	return b, err
@@ -100,11 +104,15 @@ func (s *Store) ListBills(status, contactID, from, to, search string) ([]models.
 	defer rows.Close()
 
 	var bills []models.Bill
+
+	slog.Debug("Bills listed", slog.Any("bills", bills))
 	for rows.Next() {
 		b, err := scanBill(rows)
 		if err != nil {
+			slog.Error("Error scanning bill", slog.Any("error", err))
 			return nil, err
 		}
+		slog.Debug("Bill scanned", slog.Any("bill", b))
 		b.Items = []models.BillItem{}
 		bills = append(bills, b)
 	}

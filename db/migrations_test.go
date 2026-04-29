@@ -40,7 +40,7 @@ func openTestDB(t *testing.T) *PortalDB {
 		t.Fatalf("open test database: %v", err)
 	}
 	t.Cleanup(func() { rawDB.Close() })
-	return WrapDB(rawDB)
+	return WrapDB(context.Background(), rawDB)
 }
 
 // migrateTestDB applies all pending migrations to a test (DuckDB) database using
