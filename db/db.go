@@ -1,12 +1,14 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -27,7 +29,21 @@ func openDB(dsn string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to parse DSN: %w", err)
 	}
 	config.DefaultQueryExecMode = pgx.QueryExecModeExec
-	return stdlib.OpenDB(*config), nil
+
+	// Register a lenient date codec on every new connection so that Nexus
+	// gateway DATE columns sent as timestamp-like strings (e.g. "2026-04-27
+	// 00:00:00") are accepted in addition to the strict YYYY-MM-DD format that
+	// the default pgtype.DateCodec requires.
+	afterConnect := stdlib.OptionAfterConnect(func(_ context.Context, conn *pgx.Conn) error {
+		conn.TypeMap().RegisterType(&pgtype.Type{
+			Name:  "date",
+			OID:   pgtype.DateOID,
+			Codec: lenientDateCodec{},
+		})
+		return nil
+	})
+
+	return stdlib.OpenDB(*config, afterConnect), nil
 }
 
 // OpenWithCredentials opens a single-connection PortalDB using the given
