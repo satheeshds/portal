@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"time"
@@ -31,8 +32,8 @@ func GenerateRecurringOccurrences(database *PortalDB) error {
 		id          int
 		frequency   string
 		interval    int
-		nextDueDate string
-		endDate     *string
+		nextDueDate time.Time
+		endDate     sql.NullTime
 		amount      int64
 	}
 
@@ -49,11 +50,7 @@ func GenerateRecurringOccurrences(database *PortalDB) error {
 	todayTime, _ := time.Parse("2006-01-02", today)
 
 	for _, rp := range payments {
-		nextDue, err := time.Parse("2006-01-02", rp.nextDueDate)
-		if err != nil {
-			slog.Warn("invalid next_due_date", "recurring_payment_id", rp.id, "date", rp.nextDueDate)
-			continue
-		}
+		nextDue := rp.nextDueDate
 
 		completed := false
 		for !nextDue.After(todayTime) {
@@ -78,12 +75,9 @@ func GenerateRecurringOccurrences(database *PortalDB) error {
 			nextDue = AdvanceDate(nextDue, rp.frequency, rp.interval)
 
 			// If a hard end_date is set and we've passed it, mark the schedule completed
-			if rp.endDate != nil && *rp.endDate != "" {
-				endDate, err := time.Parse("2006-01-02", *rp.endDate)
-				if err == nil && nextDue.After(endDate) {
-					completed = true
-					break
-				}
+			if rp.endDate.Valid && nextDue.After(rp.endDate.Time) {
+				completed = true
+				break
 			}
 		}
 

@@ -65,8 +65,8 @@ func SuggestMatches(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var txnDate time.Time
-	if txn.TransactionDate != nil && *txn.TransactionDate != "" {
-		txnDate, _ = time.Parse("2006-01-02", *txn.TransactionDate)
+	if !txn.TransactionDate.IsZero() {
+		txnDate = txn.TransactionDate.Time
 	}
 	txnSearchText := buildMatchSearchText(txn.Description, txn.Reference)
 
@@ -110,8 +110,8 @@ func AutoMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var txnDate time.Time
-	if txn.TransactionDate != nil && *txn.TransactionDate != "" {
-		txnDate, _ = time.Parse("2006-01-02", *txn.TransactionDate)
+	if !txn.TransactionDate.IsZero() {
+		txnDate = txn.TransactionDate.Time
 	}
 	txnSearchText := buildMatchSearchText(txn.Description, txn.Reference)
 
@@ -401,10 +401,7 @@ func suggestPayouts(s *store.Store, amount models.Money, txnDate time.Time, txnS
 			reasons = append(reasons, "amount_exceeds_unallocated")
 		}
 
-		docDate := ""
-		if c.SettlementDate != nil {
-			docDate = *c.SettlementDate
-		}
+		docDate := c.SettlementDate.String()
 		if ds, reason := matchDateScore(txnDate, docDate, 7); ds > 0 {
 			confidence += ds
 			reasons = append(reasons, reason)
@@ -465,7 +462,7 @@ func suggestRecurringPayments(s *store.Store, txnType string, amount models.Mone
 			reasons = append(reasons, "approximate_amount_match")
 		}
 
-		if ds, reason := matchDateScore(txnDate, c.DueDate, 7); ds > 0 {
+		if ds, reason := matchDateScore(txnDate, c.DueDate.String(), 7); ds > 0 {
 			confidence += ds
 			reasons = append(reasons, reason)
 		}
@@ -479,7 +476,7 @@ func suggestRecurringPayments(s *store.Store, txnType string, amount models.Mone
 			DocumentType: "recurring_payment_occurrence",
 			DocumentID:   c.ID,
 			DocumentRef:  c.Name,
-			DocumentDate: c.DueDate,
+			DocumentDate: c.DueDate.String(),
 			Amount:       c.Amount,
 			Unallocated:  occUnallocated,
 			Confidence:   math.Min(1.0, math.Round(confidence*100)/100),
@@ -622,10 +619,7 @@ func SuggestTransactionsForPayout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	docDate := ""
-	if info.SettlementDate != nil {
-		docDate = *info.SettlementDate
-	}
+	docDate := info.SettlementDate.String()
 
 	suggestions := suggestTransactionsForDocumentStore(s, "income", "payout", payoutID, unallocated, docDate, 7, info.UtrNumber, info.OutletName)
 	sort.Slice(suggestions, func(i, j int) bool {
@@ -659,10 +653,7 @@ func suggestTransactionsForDocumentStore(s *store.Store, txnType, docType string
 
 	var suggestions []TransactionSuggestion
 	for _, c := range candidates {
-		txnDateStr := ""
-		if c.Date != nil {
-			txnDateStr = *c.Date
-		}
+		txnDateStr := c.Date.String()
 		txnUnallocated := models.Money(int64(c.Amount) - int64(c.Allocated))
 		if txnUnallocated <= 0 {
 			continue
@@ -683,13 +674,10 @@ func suggestTransactionsForDocumentStore(s *store.Store, txnType, docType string
 			reasons = append(reasons, "amount_exceeds_unallocated")
 		}
 
-		if !docDate_.IsZero() && txnDateStr != "" {
-			txnDate, err := time.Parse("2006-01-02", txnDateStr)
-			if err == nil {
-				if ds, reason := matchDateScoreTime(txnDate, docDate_, windowDays); ds > 0 {
-					confidence += ds
-					reasons = append(reasons, reason)
-				}
+		if !docDate_.IsZero() && !c.Date.IsZero() {
+			if ds, reason := matchDateScoreTime(c.Date.Time, docDate_, windowDays); ds > 0 {
+				confidence += ds
+				reasons = append(reasons, reason)
 			}
 		}
 
@@ -734,20 +722,12 @@ func SuggestTransactionsForRecurringPayment(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	docDate := ""
-	if info.NextDueDate != nil {
-		docDate = *info.NextDueDate
-	}
+	docDate_ := info.NextDueDate.Time
 
 	candidates, err := s.SuggestTransactionsForRecurringPayment(info.Type, rpID)
 	if err != nil {
 		writeJSON(w, http.StatusOK, []TransactionSuggestion{})
 		return
-	}
-
-	var docDate_ time.Time
-	if docDate != "" {
-		docDate_, _ = time.Parse("2006-01-02", docDate)
 	}
 
 	tolerance := models.Money(int64(info.Amount) * 2 / 100)
@@ -762,10 +742,7 @@ func SuggestTransactionsForRecurringPayment(w http.ResponseWriter, r *http.Reque
 			continue
 		}
 
-		txnDateStr := ""
-		if c.Date != nil {
-			txnDateStr = *c.Date
-		}
+		txnDateStr := c.Date.String()
 
 		var confidence float64
 		var reasons []string
@@ -778,13 +755,10 @@ func SuggestTransactionsForRecurringPayment(w http.ResponseWriter, r *http.Reque
 			reasons = append(reasons, "approximate_amount_match")
 		}
 
-		if !docDate_.IsZero() && txnDateStr != "" {
-			txnDate, err := time.Parse("2006-01-02", txnDateStr)
-			if err == nil {
-				if ds, reason := matchDateScoreTime(txnDate, docDate_, 7); ds > 0 {
-					confidence += ds
-					reasons = append(reasons, reason)
-				}
+		if !docDate_.IsZero() && !c.Date.IsZero() {
+			if ds, reason := matchDateScoreTime(c.Date.Time, docDate_, 7); ds > 0 {
+				confidence += ds
+				reasons = append(reasons, reason)
 			}
 		}
 
@@ -821,11 +795,11 @@ func SuggestTransactionsForRecurringPayment(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusOK, suggestions)
 }
 
-// derefDate returns the first non-empty date from the provided pointers.
-func derefDate(dates ...*string) string {
+// derefDate returns the first non-zero date formatted as "YYYY-MM-DD", or "" if all are zero.
+func derefDate(dates ...models.Date) string {
 	for _, d := range dates {
-		if d != nil && *d != "" {
-			return *d
+		if !d.IsZero() {
+			return d.String()
 		}
 	}
 	return ""

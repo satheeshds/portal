@@ -26,13 +26,10 @@ type InvoiceLink struct {
 
 func scanInvoice(scanner interface{ Scan(...any) error }) (models.Invoice, error) {
 	var inv models.Invoice
-	var issueDate, dueDate nullableDate
-	err := scanner.Scan(&inv.ID, &inv.ContactID, &inv.InvoiceNumber, &issueDate, &dueDate,
+	err := scanner.Scan(&inv.ID, &inv.ContactID, &inv.InvoiceNumber, &inv.IssueDate, &inv.DueDate,
 		&inv.Amount, &inv.Status, &inv.FileURL, &inv.Notes, &inv.CreatedAt, &inv.UpdatedAt,
 		&inv.ContactName, &inv.Allocated)
 	if err == nil {
-		inv.IssueDate = issueDate.Value
-		inv.DueDate = dueDate.Value
 		inv.Unallocated = models.Money(int64(inv.Amount) - int64(inv.Allocated))
 	}
 	return inv, err

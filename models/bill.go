@@ -9,8 +9,8 @@ type Bill struct {
 	ID         int       `json:"id"`
 	ContactID  *int      `json:"contact_id"`
 	BillNumber string    `json:"bill_number"`
-	IssueDate  *string   `json:"issue_date"`
-	DueDate    *string   `json:"due_date"`
+	IssueDate  Date      `json:"issue_date"`
+	DueDate    Date      `json:"due_date"`
 	Amount     Money     `json:"amount"`
 	Status     string    `json:"status"`
 	FileURL    *string   `json:"file_url"`
